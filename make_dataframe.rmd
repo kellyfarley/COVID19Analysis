@@ -15,6 +15,10 @@ output:
 
 https://github.com/nytimes/covid-19-data
 
+```{r}
+rm(list=ls())
+```
+
 
 ```{r}
 # Option 1 for Cases - Load in live case data by county dataset (NYT)
@@ -214,14 +218,11 @@ for(i in 1:length(toScale)){
   rough_df[[paste(toScale[i],"_as_pct", sep="")]] <- rough_df[[toScale[i]]] / rough_df$POP_ESTIMATE_2019
 }
 
-rough_df <- subset(rough_df, select=-c(4:7))
-
+# Save
+covid_and_demographics <- subset(rough_df, select=-c(4:7, 15))
 ```
 
-
 ```{r}
-# Save
-covid_and_demographics <- rough_df
 # Replace with your desired directory
 write.csv(covid_and_demographics, "/Users/kellyfarley/Desktop/Multivariate Stats/Final Project/covid_and_demographics.csv")
 ```

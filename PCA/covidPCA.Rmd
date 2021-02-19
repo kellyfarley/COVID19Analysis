@@ -1,0 +1,143 @@
+---
+title: "SDS 363 Pset 2"
+author: "Kelly Farley"
+date: "2/12/2021"
+output:
+  html_document:
+   toc: yes
+   toc_float:
+     collapsed: no
+  pdf_document:
+    latex_engine : xelatex
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r echo=FALSE}
+rm(list=ls())
+library(corrplot)
+library(PerformanceAnalytics)
+library(car)
+library(tidyverse)
+```
+
+# The Dataset
+
+COVID-19 infection and death statistics from U.S. counties, combined with economic, education, and population data and also survey responses about mask-wearing frequencies. 3139 complete observations on 19 metric variables, with the first variable being a categorical county identifier (FIPS). To avoid any outliers due to population size differences between counties, all variables are scaled as a percentage of population.
+
+```{r}
+raw <- read.csv("/Users/kellyfarley/Desktop/Multivariate Stats/Final Project/covid_and_demographics.csv")
+db <- subset(raw, select=c(4:24)) # exclude ID columns except FIPS
+db <- subset(db, select=-c(17)) # exclude categorical rural code
+dim(db)
+```
+
+# 1: Multivariate Normal Distribution
+
+```{r}
+# names of variables
+names <- names(db)
+
+# boxplot of all variables
+boxplot(db)
+
+# from examination of boxplots, col 8, 9, 10, 13 require transformation
+trans <- c(8, 9, 10, 13)
+for(i in 1:length(trans)){
+  db[[paste("log", names[trans[i]])]] <- log(db[[names[trans[i]]]] + .01)
+}
+
+db_trans <- subset(db, select=-trans)
+
+# refresh names
+names_trans <- names(db_trans)
+
+for(i in 1:length(names_trans)){
+  qqPlot(db_trans[[names_trans[i]]])
+}
+# looking much more linear
+```
+
+```{r}
+source("http://www.reuningscherer.net/multivariate/R/CSQPlot.r.txt")
+CSQPlot(db_trans[, -1], label="COVID-19 Data")
+```
+
+After visually inspecting a boxplot of each of the variables, it was determined that there were 4 variables with a skewed distribution, all of which had many outliers above the boxplot. The median household income, median household income as a percent of the state total, poverty percentage, and population estimate were all transformed using a natural log. After the transformation, the boxplots appeared more in line with the other variables, and the normal quantiles plots were much more linear, with only slight deviations in end behavior.
+
+The chi-square plot deviates from linearity at high chi-square quantiles, indicating that the data does not follow a multivariate normal distribution. This means we can still use PCA to analyze but cannot use parallel analysis to determine which components to retain.
+
+# 2: Correlation Matrix
+
+```{r}
+# round(cor(db_trans[, -1]), 2)
+
+corrplot.mixed(round(cor(db_trans[, -1]), 1), lower.col = "black", upper = "ellipse", tl.col = "black", number.cex = .3, order = "hclust", tl.pos = "lt", tl.cex = .7)
+```
+
+PCA should work well because there are many variables highly correlated with other variables. For instance, always mask and rarely mask have a correlation of -0.73, percentage of adults with less than a high school degree and percentage of adults with a bachelor’s degree or higher is -0.60, percentage of adults with a bachelor’s degree or higher and the log of the median household income is 0.69. .There appear to be underlying trends about the counties (about beliefs about COVID-19, about wealth/education, etc) that could be summarized in linear combinations of the 19 metric variables we have currently.
+
+# 3: PCA Using Correlation Matrix
+
+```{r}
+pc1 <- princomp(db_trans[, -1], cor=TRUE) # run PCA on correlation matrix
+
+screeplot(pc1,type="lines",col="red",lwd=2,pch=19,cex=1.2,main="Scree Plot of Transformed COVID-19 Data") # screeplot
+```
+
+```{r}
+print(summary(pc1), digits = 2, loadings=pc1$loadings, cutoff=0) # results
+
+round(pc1$sdev^2, 2) # eigenvalues
+```
+
+According to the total variance explained method, using a cutoff of 0.8, the first 9 PC's should be used. According to the Eigenvalue > 1 method, the first 4 PC's should be used. According to the scree plot elbow method, the first 3 PC's should be used.
+
+To avoid an unnecessarily complicated model, I will choose to use the scree plot elbow method and use the first 3 PC's.
+
+Note that parallel analysis, though the preferred method, would not have been appropriate here because the data does not follow a multivariate normal distribution.
+
+# 4: Principle Component Examination
+
+```{r}
+print(summary(pc1), digits = 2, loadings=pc1$loadings, cutoff=0) # summary
+```
+
+Looking at PC1: This principle component seems to be related to wealth and education. It combines log median household income (-0.39) with the log of the percent below the poverty line (0.35) and the percent of adults with a bachelor's degree or higher (-0.35).
+
+Looking at PC2: This principle component seems to be a measure of masking behaviors. It combines the percentage of those who say they always mask (-0.49), rarely mask mask (0.38), and never mask (0.33).
+
+Looking at PC3: This principle component seems to be a measure of population as it relates to confirmed cases. It combines the birth rate (-0.52) with the cumulative percentage of population with confirmed cases (-0.51) and the cumulative percentage of population that has died of COVID-19 (-0.36).
+
+# 5: Score Plot (fix)
+
+```{r}
+library(FactoMineR)
+par(cex=.4)
+pc2 <- PCA(db_trans[, -1])
+```
+
+There are no noticeable trends in the score plot, though observation 2671 is an outlier (FIPS 48301 in Loving, Texas, which has a very small population of 169, the lowest population in the entire dataset).
+
+In the biplot, quadrant 1 is associated with poor adherence to masking and high percentages of confirmed cases; quadrant 2 is associated with frequent masking, high income, and high education; quadrant 3 is associated with population and new cases as of February 9, 2021; and quadrant 4 is associated with the unemployment rate, poverty rate, and death rate. These groupings make sense because PC 1 is related to wealth and education and PC 2 is related to masking behaviors.
+
+```{r eval=F}
+source("http://reuningscherer.net/multivariate/r/ciscoreplot.R.txt")
+ciscoreplot(pc1, c(1,2), db_trans[, -1])
+```
+
+# 6: Summary
+
+```{r}
+chart.Correlation(db_trans[, -1], histogram=TRUE, pch=19)
+```
+
+This data set contains COVID-19 infection and death statistics from U.S. counties, combined with economic, education, and population data and also survey responses about mask-wearing frequencies. It has 3139 complete observations on 19 metric variables; since the number of observations is over 150 times the number of variables, we have more than enough observations given our dimensions.
+
+Most of the relationships appear to be linear, and, after log transforming a few variables, the variables follow approximately normal distributions. However, the data does not completely follow a multivariate normal distribution, according to the chi-square plot, which deviates from linearity at the ends.
+
+Using PCA, we can reduce these 19 variables to 3 composite variables that are related to wealth and education, attitudes about masking, and population. These 3 PC's can account for 53% of the total variability, which is moderately effective.
+
+As noted in the score plot, there is a multivariate outlier, with county 48301 (in Loving Texas) having the lowest scores on dimension 1 and dimension 2, indicating high education and high adherence to masking. This is likely connected to the fact that this county has a very small population of 169, the lowest population in the entire dataset, so any sampling bias could greatly skew these estimates based on such a small sample size.

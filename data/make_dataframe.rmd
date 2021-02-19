@@ -1,0 +1,235 @@
+---
+title: "Making a COVID-19 Dataset"
+author: "Evan Collins"
+date: "9 February 2021"
+output:
+  html_document:
+   toc: yes
+   toc_float:
+     collapsed: no
+  pdf_document:
+    latex_engine : xelatex
+---
+
+# Make Dataframe Combining COVID-19 Data and Other Data
+
+https://github.com/nytimes/covid-19-data
+
+
+```{r}
+# Option 1 for Cases - Load in live case data by county dataset (NYT)
+
+library(readr)
+
+url_case_data = ("https://raw.githubusercontent.com/nytimes/covid-19-data/master/live/us-counties.csv")
+
+case_data <- read_csv(url(url_case_data))
+# Only complete case data; row count is significantly reduced
+case_data_complete <- case_data[complete.cases(case_data$fips), ]
+
+row.names(case_data_complete) <- case_data_complete$fips
+```
+
+```{r}
+# Better - Option 2 for Cases - Load in cumulative case by county dataset (JHU)
+
+
+url_case_data = ("https://raw.githubusercontent.com/govex/COVID-19/master/data_tables/JHU_USCountymap/df_Counties2020.csv")
+
+case_data <- read_csv(url(url_case_data))
+
+# Change date to most updated day
+case_data <- case_data[case_data$dt == "2021-02-09",]
+
+
+case_data <- case_data[!case_data$FIPS=="00000", ]
+
+# select cool columns for us to analyze
+case_data_select <- subset(case_data, select=c("FIPS", "ST_Name", "Confirmed", "Deaths", "Population", "IncidenceRate", "NewCases"))
+# Only complete case data; row count is significantly reduced
+case_data_complete <- case_data[complete.cases(case_data$FIPS), ]
+# Remove accidentally duplicated entries (only 1)
+case_data_complete <- unique(case_data_complete)
+
+
+row.names(case_data_complete) <- case_data_complete$FIPS
+```
+
+
+```{r}
+# Load in mask survey by county dataset
+
+url_mask_data = ("https://raw.githubusercontent.com/nytimes/covid-19-data/master/mask-use/mask-use-by-county.csv")
+
+mask_data <- read_csv(url(url_mask_data))
+
+row.names(mask_data) <- mask_data$COUNTYFP
+```
+
+```{r}
+# Combine case and mask datasets
+
+case_and_mask_data <- merge(case_data_complete, mask_data, all=T, by='row.names')
+
+# only complete cases
+
+case_and_mask_data <- case_and_mask_data[complete.cases(case_and_mask_data), ]
+
+row.names(case_and_mask_data) <- case_and_mask_data$FIPS
+```
+
+```{r}
+# Unemployment
+
+# https://www.ers.usda.gov/data-products/county-level-data-sets/download-data/
+
+url_jobs_data = ("https://evancollins.com/Unemployment.csv")
+
+jobs_data <- read_csv(url(url_jobs_data))
+
+# select cool columns for us to analyze
+jobs_data_select <- subset(jobs_data, select=c("fips_txt", "Unemployment_rate_2019", "Median_Household_Income_2019", "Civilian_labor_force_2019", "Med_HH_Income_Percent_of_State_Total_2019"))
+jobs_data_select <- jobs_data_select[complete.cases(jobs_data_select),]
+
+row.names(jobs_data_select) <- jobs_data_select$fips_txt
+```
+
+```{r}
+# Combine jobs with case and mask data
+
+case_and_mask_and_jobs_data <- merge(case_and_mask_data, jobs_data_select, all=T, by='row.names')
+
+case_and_mask_and_jobs_data <- case_and_mask_and_jobs_data[complete.cases(case_and_mask_and_jobs_data),]
+
+row.names(case_and_mask_and_jobs_data) <- case_and_mask_and_jobs_data$FIPS
+```
+
+```{r}
+# Poverty Data
+
+# https://www.ers.usda.gov/data-products/county-level-data-sets/download-data/
+
+url_poverty_data = ("https://evancollins.com/PovertyEstimates.csv")
+
+poverty_data <- read_csv(url(url_poverty_data))
+
+# select cool columns for us to analyze
+poverty_data_select <- subset(poverty_data, select=c("FIPStxt", "PCTPOVALL_2019"))
+poverty_data_select <- poverty_data_select[complete.cases(poverty_data_select),]
+
+row.names(poverty_data_select) <- poverty_data_select$FIPStxt
+```
+
+```{r}
+# Combine poverty with case and mask and jobs data
+
+case_and_mask_and_jobs_and_poverty_data <- merge(case_and_mask_and_jobs_data, poverty_data_select, all=T, by='row.names')
+
+case_and_mask_and_jobs_and_poverty_data <- case_and_mask_and_jobs_and_poverty_data[complete.cases(case_and_mask_and_jobs_and_poverty_data),]
+
+row.names(case_and_mask_and_jobs_and_poverty_data) <- case_and_mask_and_jobs_and_poverty_data$FIPS
+```
+
+```{r}
+# Education Data
+
+# https://www.ers.usda.gov/data-products/county-level-data-sets/download-data/
+
+url_education_data = ("https://evancollins.com/Education.csv")
+
+education_data <- read_csv(url(url_education_data))
+
+# select cool columns for us to analyze
+education_data_select <- subset(education_data, select=c("FIPS Code", "Percent of adults with less than a high school diploma, 2014-18", "Percent of adults with a bachelor's degree or higher, 2014-18"))
+
+education_data_select <- education_data_select[complete.cases(education_data_select),]
+
+row.names(education_data_select) <- education_data_select$`FIPS Code`
+```
+
+```{r}
+# Combine education with case and mask and jobs and poverty data
+
+case_and_mask_and_jobs_and_poverty_and_education_data <- merge(case_and_mask_and_jobs_and_poverty_data, education_data_select, all=T, by='row.names')
+
+case_and_mask_and_jobs_and_poverty_and_education_data <- case_and_mask_and_jobs_and_poverty_and_education_data[complete.cases(case_and_mask_and_jobs_and_poverty_and_education_data),]
+
+row.names(case_and_mask_and_jobs_and_poverty_and_education_data) <- case_and_mask_and_jobs_and_poverty_and_education_data$FIPS
+```
+
+
+```{r}
+# Population Data
+
+# https://www.ers.usda.gov/data-products/county-level-data-sets/download-data/
+
+url_population_data = ("https://evancollins.com/PopulationEstimates.csv")
+
+population_data <- read_csv(url(url_population_data))
+
+# select cool columns for us to analyze
+population_data_select <- subset(population_data, select=c("FIPStxt", "POP_ESTIMATE_2019", "R_NET_MIG_2019", "R_death_2019", "R_birth_2019", "Rural-urban_Continuum Code_2013", "Economic_typology_2015"))
+
+population_data_select <- population_data_select[complete.cases(population_data_select),]
+
+row.names(population_data_select) <- population_data_select$FIPStxt
+```
+
+```{r}
+# Combine population with case and mask and jobs and poverty and education data
+
+case_and_mask_and_jobs_and_poverty_and_education_and_population_data <- merge(case_and_mask_and_jobs_and_poverty_and_education_data, population_data_select, all=T, by='row.names')
+
+case_and_mask_and_jobs_and_poverty_and_education_and_population_data <- case_and_mask_and_jobs_and_poverty_and_education_and_population_data[complete.cases(case_and_mask_and_jobs_and_poverty_and_education_and_population_data),]
+
+row.names(case_and_mask_and_jobs_and_poverty_and_education_and_population_data) <- case_and_mask_and_jobs_and_poverty_and_education_and_population_data$FIPS
+```
+
+```{r}
+# Rough df
+rough_df <- case_and_mask_and_jobs_and_poverty_and_education_and_population_data
+
+
+# Select columns
+
+rough_df <- subset(rough_df, select=c("Countyname", "ST_Name", "FIPS", "Confirmed", "Deaths", "IncidenceRate", "NewCases", "NEVER", "RARELY", "SOMETIMES", "FREQUENTLY", "ALWAYS", "Unemployment_rate_2019", "Median_Household_Income_2019", "Civilian_labor_force_2019", "Med_HH_Income_Percent_of_State_Total_2019", "PCTPOVALL_2019", "Percent of adults with less than a high school diploma, 2014-18", "Percent of adults with a bachelor's degree or higher, 2014-18", "POP_ESTIMATE_2019", "R_NET_MIG_2019", "R_death_2019", "R_birth_2019", "Rural-urban_Continuum Code_2013", "Economic_typology_2015"))
+names(rough_df)[names(rough_df) == "Countyname"] <- "County_Name"
+names(rough_df)[names(rough_df) == "ST_Name"] <- "State_Name"
+names(rough_df)[names(rough_df) == "Confirmed"] <- "Covid_Confirmed_Cases"
+names(rough_df)[names(rough_df) == "Deaths"] <- "Covid_Deaths"
+names(rough_df)[names(rough_df) == "Incidence"] <- "Covid_Incidence_Rate"
+names(rough_df)[names(rough_df) == "NewCases"] <- "Covid_New_Cases"
+names(rough_df)[names(rough_df) == "NEVER"] <- "Never_Wear_Mask_Survey"
+names(rough_df)[names(rough_df) == "RARELY"] <- "Rarely_Wear_Mask_Survey"
+names(rough_df)[names(rough_df) == "SOMETIMES"] <- "Sometimes_Wear_Mask_Survey"
+names(rough_df)[names(rough_df) == "FREQUENTLY"] <- "Frequently_Wear_Mask_Survey"
+names(rough_df)[names(rough_df) == "ALWAYS"] <- "Always_Wear_Mask_Survey"
+names(rough_df)[names(rough_df) == "Unemployment_rate_2019"] <- "Unemployment_Rate_2019"
+names(rough_df)[names(rough_df) == "Civilian_labor_force_2019"] <- "Civilian_Labor_Force_2019"
+names(rough_df)[names(rough_df) == "Med_HH_Income_Percent_of_State_Total_2019"] <- "Median_Household_Income_Percent_of_State_Total_2019"
+names(rough_df)[names(rough_df) == "PCTPOVALL_2019"] <- "Percent_Poverty_2019"
+names(rough_df)[names(rough_df) == "Percent of adults with less than a high school diploma, 2014-18"] <- "Percent_Adults_Less_Than_HS"
+names(rough_df)[names(rough_df) == "Percent of adults with a bachelor's degree or higher, 2014-18"] <- "Percent_Adults_Bachelors_or_Higher"
+names(rough_df)[names(rough_df) == "POP_ESTIMATE_2019"] <- "Population_2019"
+names(rough_df)[names(rough_df) == "R_NET_MIG_2019"] <- "Net_Migration_Rate_2019"
+names(rough_df)[names(rough_df) == "R_death_2019"] <- "Death_Rate_2019"
+names(rough_df)[names(rough_df) == "R_birth_2019"] <- "Birth_Rate_2019"
+names(rough_df)[names(rough_df) == "Rural-urban_Continuum Code_2013"] <- "Rural_Urban_Code_2013"
+names(rough_df)[names(rough_df) == "Economic_typology_2015"] <- "Economic_Typology_2015"
+```
+
+```{r}
+# scale columns by population
+toScale <- c("Covid_Confirmed_Cases", "Covid_Deaths", "Covid_New_Cases", "Civilian_Labor_Force_2019")
+for(i in 1:length(toScale)){
+  rough_df[[paste(toScale[i],"_as_pct", sep="")]] <- rough_df[[toScale[i]]] / rough_df$Population_2019
+}
+# Save
+covid_and_demographics <- subset(rough_df, select=-c(4:7, 15))
+```
+
+```{r}
+# Replace with your desired directory
+write.csv(covid_and_demographics, "/Users/Evan/Desktop/s&ds 563/covid_and_demographics.csv")
+```
+

@@ -1,18 +1,18 @@
 ---
 title: "S&DS 363 Homework 2"
-author: "Kelly Farley + Evan Collins"
+author: "Kelly Farley + Evan Collins + Ken Stier"
 date: "25 February 2021"
 output:
+  pdf_document:
+    latex_engine : xelatex
   html_document:
    toc: yes
    toc_float:
      collapsed: no
-  pdf_document:
-    latex_engine : xelatex
 ---
 
 ```{r, echo=F, message=F, warning=F}
-# Load packages
+# load packages
 library(corrplot)
 library(PerformanceAnalytics)
 library(FactoMineR)
@@ -54,6 +54,9 @@ db_trans <- subset(db, select=-trans)
 
 # refresh names
 names_trans <- names(db_trans)
+```
+
+```{r eval=F}
 for(i in 1:length(names_trans)){
   qqPlot(db_trans[[names_trans[i]]])
 }
@@ -68,7 +71,6 @@ CSQPlot(db_trans[, -1], label="COVID-19 Data")
 After visually inspecting a boxplot of each of the variables, it was determined that there were 4 variables with a skewed distribution, all of which had many outliers above the boxplot. The median household income, median household income as a percent of the state total, poverty percentage, and population estimate were all transformed using a natural log. After the transformation, the boxplots appeared more in line with the other variables, and the normal quantiles plots were much more linear, with only slight deviations in end behavior.
 
 The chi-square plot deviates from linearity at high chi-square quantiles, indicating that the data does not follow a multivariate normal distribution. This means we can still use PCA to analyze but cannot use parallel analysis to determine which components to retain.
-
 
 # 2: Correlation Matrix
 

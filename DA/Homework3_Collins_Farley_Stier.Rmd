@@ -282,7 +282,7 @@ sumstats
 
 ```{r}
 #calculate Box's M statistic
-boxM(db_final[,3:5], db_final$Rural_Urban_Code_2013)
+biotools::boxM(db_final[,3:5], db_final$Rural_Urban_Code_2013)
 ```
 
 Wth a p-value significantly below the 0.05 threshold, it appears that the covariances matrices are **NOT** the same between groups.
@@ -459,3 +459,43 @@ QDA seems to perform only slightly better than LDA (error rate of 0.459 versus 0
 Also as expected based on their coefficients discussed earlier, the median household income and percent poverty are the strongest discriminators with the lowest error rate (0.459 versus 0.490 and 0.545).
 
 # 9 Kernel / K Nearest Neighbors
+
+First we will set up a dataframe that includes the data along the two principal components for purposes of 2D graphing of k-means centers. This is just a personal preference but will be used for demonstration in a moment. We'll also set the rownames of this dataframe to the county identifiers. Not necessary, but I find it helpful.
+
+```{r}
+db_wscores <- db_final
+db_wscores$s1 <- scores1
+db_wscores$s2 <- scores2
+rownames(db_wscores) <- db_wscores$FIPS
+```
+
+This next block makes use of the expanded dataframe so we can visualize roughly where kmeans is trying to cluster in two dimensions. It runs through kmeans analyses using 2-9 centers, just to estimate where we will start getting diminishing returns on increasing the number of centers. Note, the kmeans analysis is based on our three main variables, but the centers are mapped to our principal components as determined above.
+
+```{r}
+for(i in 2:9){
+  kml <- kmeans(db_wscores[,3:5], centers = i)
+  ks1 <- as.vector(as.matrix(kml$centers)%*%matrix(c(county.disc$scaling[,1]), ncol = 1))
+  ks2 <- as.vector(as.matrix(kml$centers)%*%matrix(c(county.disc$scaling[,2]), ncol = 1))
+  plot(db_wscores[,7:8], col = db_wscores[,6]+3, pch = db_wscores[,6]+15, cex = 1.2, xlab="LD1", ylab="LD2", main="kmeans centers superimposed on rural-urban data")
+  points(ks1,ks2, col="black", cex=3, pch=18)
+}
+```
+
+Beyond around 4 centers, we really don't gain much information. The centers themselves begin to cluster, and we end up with smaller clusters that don't substantially differentiate amongst themselves any more than if we had fewer centers. The next block takes a 4-centers kmeans analysis and shows the distribution of each rural-urban category in each cluster. It also tabulates the proportion of points in that cluster that correspond to each category, because redundancy is nice sometimes.
+
+```{r}
+kml <- kmeans(db_wscores[,3:5], centers = 4)
+for(i in 1:4){
+  temp <- db_wscores$Rural_Urban_Code_2013[kml$cluster==i]
+  temp <- table(temp)
+  barplot(temp)
+  tempsum <- sum(temp)
+  temp <- temp/tempsum
+  print(paste("cluster ",i,", count ",tempsum,sep=""))
+  print(temp)
+}
+```
+
+To confirm that we don't actually gain much from increasing or decreasing the number of centers, I reviewed this set of plots for each number of centers tried above. The plots get very repetitive and are excluded, but suffice to say, the pattern persists, and there are only more and more poorly-predictive plots as you increase the number of centers.
+
+As we can see, cluster 4 is disproportionately urban, so we can pick out a cluster of urban counties based on the three variables we are using. However, other than cluster 1 *not* containing many urban counties, the other clusters do little to distinguish between categories based on the inputs. Just looking at the plots two blocks ago (ca. line 465), the lack of distinction is not all that surprising. It certainly appears that simple k-means analysis won't do much to predict the distribution of county type based on household income, poverty rates, and COVID cases, except maybe for providing an inkling of whether a given county just might be urban.

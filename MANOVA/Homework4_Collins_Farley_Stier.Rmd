@@ -1,0 +1,95 @@
+---
+title: "S&DS 363 Homework 4"
+author: "Evan Collins, Kelly Farley, Ken Stier"
+date: "11 March 2021"
+output:
+  html_document:
+   toc: yes
+   toc_float:
+     collapsed: no
+  pdf_document:
+    latex_engine : xelatex
+---
+
+```{r, echo=F, message=F, warning=F, cache=T}
+# clear env
+rm(list=ls())
+
+# Load packages
+library(corrplot)
+library(PerformanceAnalytics)
+library(FactoMineR)
+library(car)
+library(Rmisc)
+library(MASS)
+library(biotools)
+library(DiscriMiner)
+library(klaR)
+library(car)
+library(heplots)
+library(ggplot2)
+```
+
+# Contributors
+
+Evan Collins (evan.collins@yale.edu)
+
+Kelly Farley (kelly.farley@yale.edu)
+
+Ken Stier (ken.stier@yale.edu)
+
+# The Dataset
+
+*Raw dataset:*
+COVID-19 infection and death statistics from U.S. counties (sourced from NYT), combined with economic, education, and population data (sourced from various government agencies) and also survey responses about mask-wearing frequencies (sourced from NYT). 3141 complete observations on 19 metric variables and 6 categorical variables. To avoid any outliers due to population size differences between counties, all variables are scaled as a percentage of population. Variable descriptions can be found [here](http://evancollins.com/variable_descriptions.html).
+
+*Data of relevance for this pset:*
+
+Categorical Predictor 1 (rural_urban_code): The Rural-Urban Codes are numbered 1-9 according to descriptions provided by the USDA. We will regroup codes 1 through 9 as into three groups: (1) "Urban" for codes 1-3, (2) "Suburban" for codes 4-6, and (3) "Rural" for codes 7-9.
+
+Categorical Predictor 2 (region): Each county is associated with a state name, which we will group into regions as defined by the U.S. Census Bureau: Northeast, Midwest, South, and West.
+
+3 Continous Response Variables: A NYT survey about masking behaviors asked people whether they wear a mask in public when they expect to be within 6 feet of another person and calculated the responses for each county for never, rarely, sometimes, frequently, and always mask. We choose to look at the extremes and will examine 3 continous response variables: never mask, sometimes mask, and always mask.
+
+
+```{r}
+raw <- read_csv("https://evancollins.com/covid_and_demographics.csv")
+
+# create categorical variables: rural-urban code (3 levels), region (4 variables)
+raw <- 
+  raw %>%
+    mutate(region = case_when(
+      State_Name %in% c("Washington", "Oregon", "California", "Nevada", "Idaho", "Montana", "Utah", "Arizona", "Wyoming", "Colorado", "New Mexico", "Alaska", "Hawaii") ~ "West",
+      State_Name %in% c("North Dakota", "South Dakota", "Nebraska", "Kansas", "Minnesota", "Iowa", "Missouri", "Wisconsin", "Illinois", "Michigan", "Indiana", "Ohio") ~ "Midwest",
+      State_Name %in% c("Texas", "Oklahoma", "Arkansas", "Louisiana", "Mississippi", "Tennessee", "Kentucky", "Alabama", "Georgia", "Florida", "South Carolina", "North Carolina", "Virginia", "West Virginia", "District of Columbia", "Delaware", "Maryland") ~ "South",
+      State_Name %in% c("Pennsylvania", "New Jersey", "Connecticut", "Rhode Island", "Massachusetts", "New Hampshire", "Vermont", "Maine", "New York") ~ "Northeast"),
+      rural_urban_code = case_when(
+        Rural_Urban_Code_2013 %in% c(1, 2, 3) ~ "Urban",
+        Rural_Urban_Code_2013 %in% c(4, 5, 6) ~ "Suburban",
+        Rural_Urban_Code_2013 %in% c(7, 8, 9) ~ "Rural")
+      )
+```
+
+# 1: Interactions Plot
+
+```{r}
+interaction.plot(raw$rural_urban_code, raw$region, raw$Never_Wear_Mask_Survey,
+  lwd = 3, col = c("red", "blue", "black", "green"), trace.label = "Region", 
+  xlab = "Rural-Urban Setting", main = "Interaction Plot for Never Mask")
+
+interaction.plot(raw$rural_urban_code, raw$region, raw$Sometimes_Wear_Mask_Survey,
+  lwd = 3, col = c("red", "blue", "black", "green"), trace.label = "Region", 
+  xlab = "Rural-Urban Setting", main = "Interaction Plot for Sometimes Mask")
+
+interaction.plot(raw$rural_urban_code, raw$region, raw$Always_Wear_Mask_Survey,
+  lwd = 3, col = c("red", "blue", "black", "green"), trace.label = "Region", 
+  xlab = "Rural-Urban Setting", main = "Interaction Plot for Always Mask")
+```
+
+There does appear to be interaction between the rural-urban setting and the region, as evidenced by the non-parallel lines on the interaction plots for never masking, sometimes masking, and always masking. In particular, the West region seems to have behaviors that most contradict those of other regions, particularly in the Western suburbs.
+
+# 2: Two-Way MANOVA
+
+Univariate:
+
+Multivariate:

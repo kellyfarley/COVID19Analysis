@@ -16,18 +16,8 @@ output:
 rm(list=ls())
 
 # Load packages
-library(corrplot)
-library(PerformanceAnalytics)
-library(FactoMineR)
 library(car)
-library(Rmisc)
-library(MASS)
-library(biotools)
-library(DiscriMiner)
-library(klaR)
-library(car)
-library(heplots)
-library(ggplot2)
+library(tidyverse)
 ```
 
 # Contributors
@@ -92,4 +82,15 @@ There does appear to be interaction between the rural-urban setting and the regi
 
 Univariate:
 
+```{r}
+nevermod <- Anova(lm(Never_Wear_Mask_Survey ~ region*rural_urban_code, data = raw), type = 3)
+sometimesmod <- Anova(lm(Sometimes_Wear_Mask_Survey ~ region*rural_urban_code, data = raw), type = 3)
+alwaysmod <- Anova(lm(Always_Wear_Mask_Survey ~ region*rural_urban_code, data = raw), type = 3)
+```
+
 Multivariate:
+
+```{r eval=F}
+multimod <- lm(cbind("Never_Wear_Mask_Survey", "Sometimes_Wear_Mask_Survey", "Always_Wear_Mask_Survey") ~ region*rural_urban_code, data = raw)
+summary(Anova(multimod))
+```

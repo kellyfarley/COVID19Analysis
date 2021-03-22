@@ -11,7 +11,7 @@ output:
     latex_engine : xelatex
 ---
 
-```{r, echo=F, message=F, warning=F, cache=T}
+```{r, echo=F, message=F, warning=F}
 # clear env
 rm(list=ls())
 
@@ -43,7 +43,7 @@ Categorical Predictor 2 (region): Each county is associated with a state name, w
 
 
 ```{r}
-raw <- read_csv("https://evancollins.com/covid_and_demographics.csv")
+raw <- readr::read_csv("https://evancollins.com/covid_and_demographics.csv")
 
 # create categorical variables: rural-urban code (3 levels), region (4 variables)
 raw <- 
@@ -83,14 +83,22 @@ There does appear to be interaction between the rural-urban setting and the regi
 Univariate:
 
 ```{r}
-nevermod <- Anova(lm(Never_Wear_Mask_Survey ~ region*rural_urban_code, data = raw), type = 3)
-sometimesmod <- Anova(lm(Sometimes_Wear_Mask_Survey ~ region*rural_urban_code, data = raw), type = 3)
-alwaysmod <- Anova(lm(Always_Wear_Mask_Survey ~ region*rural_urban_code, data = raw), type = 3)
+Anova(lm(Never_Wear_Mask_Survey ~ region*rural_urban_code, data = raw), type = 3)
+Anova(lm(Sometimes_Wear_Mask_Survey ~ region*rural_urban_code, data = raw), type = 3)
+Anova(lm(Always_Wear_Mask_Survey ~ region*rural_urban_code, data = raw), type = 3)
 ```
+
+Univariate:
+
+The region, rural-urban code, and their interaction are significant in all 3 univariate models for masking behaviors, with p-values << alpha = 0.05. Based on coefficients, region is a more important predictor of sometimes masking, then always masking, then never masking; rural-urban code is a more important predictor of never masking, then sometimes masking, then always masking. but overall a less important predictor than region. Their interaction is most important in never masking, then always masking, then sometimes masking.
+
 
 Multivariate:
 
-```{r eval=F}
-multimod <- lm(cbind("Never_Wear_Mask_Survey", "Sometimes_Wear_Mask_Survey", "Always_Wear_Mask_Survey") ~ region*rural_urban_code, data = raw)
-summary(Anova(multimod))
+Overall, there are differences between region and rural-urban codes (all multivariate statistics are significant). All of the multivariate tests suggest there is an interaction effect between region and rural-urban code.
+
+```{r}
+multimod <- lm(cbind(Never_Wear_Mask_Survey, Sometimes_Wear_Mask_Survey, Always_Wear_Mask_Survey) ~ region*rural_urban_code, data = raw)
+summary(Anova(multimod), univariate=T)
 ```
+

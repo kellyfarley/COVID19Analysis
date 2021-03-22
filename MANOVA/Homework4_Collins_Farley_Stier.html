@@ -1546,7 +1546,7 @@ div.tocify {
 <p>Categorical Predictor 1 (rural_urban_code): The Rural-Urban Codes are numbered 1-9 according to descriptions provided by the USDA. We will regroup codes 1 through 9 as into three groups: (1) “Urban” for codes 1-3, (2) “Suburban” for codes 4-6, and (3) “Rural” for codes 7-9.</p>
 <p>Categorical Predictor 2 (region): Each county is associated with a state name, which we will group into regions as defined by the U.S. Census Bureau: Northeast, Midwest, South, and West.</p>
 <p>3 Continous Response Variables: A NYT survey about masking behaviors asked people whether they wear a mask in public when they expect to be within 6 feet of another person and calculated the responses for each county for never, rarely, sometimes, frequently, and always mask. We choose to look at the extremes and will examine 3 continous response variables: never mask, sometimes mask, and always mask.</p>
-<pre class="r"><code>raw &lt;- read_csv(&quot;https://evancollins.com/covid_and_demographics.csv&quot;)</code></pre>
+<pre class="r"><code>raw &lt;- readr::read_csv(&quot;https://evancollins.com/covid_and_demographics.csv&quot;)</code></pre>
 <pre><code>## Warning: Missing column names filled in: 'X1' [1]</code></pre>
 <pre><code>## 
 ## ── Column specification ────────────────────────────────────────────────────────
@@ -1591,12 +1591,161 @@ raw &lt;-
 <div id="two-way-manova" class="section level1">
 <h1>2: Two-Way MANOVA</h1>
 <p>Univariate:</p>
-<pre class="r"><code>nevermod &lt;- Anova(lm(Never_Wear_Mask_Survey ~ region*rural_urban_code, data = raw), type = 3)
-sometimesmod &lt;- Anova(lm(Sometimes_Wear_Mask_Survey ~ region*rural_urban_code, data = raw), type = 3)
-alwaysmod &lt;- Anova(lm(Always_Wear_Mask_Survey ~ region*rural_urban_code, data = raw), type = 3)</code></pre>
+<pre class="r"><code>Anova(lm(Never_Wear_Mask_Survey ~ region*rural_urban_code, data = raw), type = 3)</code></pre>
+<pre><code>## Anova Table (Type III tests)
+## 
+## Response: Never_Wear_Mask_Survey
+##                         Sum Sq   Df  F value    Pr(&gt;F)    
+## (Intercept)             7.5571    1 2849.276 &lt; 2.2e-16 ***
+## region                  0.5692    3   71.535 &lt; 2.2e-16 ***
+## rural_urban_code        0.6754    2  127.318 &lt; 2.2e-16 ***
+## region:rural_urban_code 0.1324    6    8.321  5.75e-09 ***
+## Residuals               8.2990 3129                       
+## ---
+## Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1</code></pre>
+<pre class="r"><code>Anova(lm(Sometimes_Wear_Mask_Survey ~ region*rural_urban_code, data = raw), type = 3)</code></pre>
+<pre><code>## Anova Table (Type III tests)
+## 
+## Response: Sometimes_Wear_Mask_Survey
+##                          Sum Sq   Df   F value  Pr(&gt;F)    
+## (Intercept)             10.8499    1 3966.9689 &lt; 2e-16 ***
+## region                   0.3800    3   46.3072 &lt; 2e-16 ***
+## rural_urban_code         0.2320    2   42.4113 &lt; 2e-16 ***
+## region:rural_urban_code  0.0294    6    1.7926 0.09662 .  
+## Residuals                8.5580 3129                      
+## ---
+## Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1</code></pre>
+<pre class="r"><code>Anova(lm(Always_Wear_Mask_Survey ~ region*rural_urban_code, data = raw), type = 3)</code></pre>
+<pre><code>## Anova Table (Type III tests)
+## 
+## Response: Always_Wear_Mask_Survey
+##                         Sum Sq   Df  F value    Pr(&gt;F)    
+## (Intercept)             59.119    1 4181.798 &lt; 2.2e-16 ***
+## region                   4.959    3  116.919 &lt; 2.2e-16 ***
+## rural_urban_code         2.979    2  105.361 &lt; 2.2e-16 ***
+## region:rural_urban_code  0.934    6   11.017 3.485e-12 ***
+## Residuals               44.236 3129                       
+## ---
+## Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1</code></pre>
+<p>Univariate:</p>
+<p>The region, rural-urban code, and their interaction are significant in all 3 univariate models for masking behaviors, with p-values &lt;&lt; alpha = 0.05. Based on coefficients, region is a more important predictor of sometimes masking, then always masking, then never masking; rural-urban code is a more important predictor of never masking, then sometimes masking, then always masking. but overall a less important predictor than region. Their interaction is most important in never masking, then always masking, then sometimes masking.</p>
 <p>Multivariate:</p>
-<pre class="r"><code>multimod &lt;- lm(cbind(&quot;Never_Wear_Mask_Survey&quot;, &quot;Sometimes_Wear_Mask_Survey&quot;, &quot;Always_Wear_Mask_Survey&quot;) ~ region*rural_urban_code, data = raw)
-summary(Anova(multimod))</code></pre>
+<p>Overall, there are differences between region and rural-urban codes (all multivariate statistics are significant). All of the multivariate tests suggest there is an interaction effect between region and rural-urban code.</p>
+<pre class="r"><code>multimod &lt;- lm(cbind(Never_Wear_Mask_Survey, Sometimes_Wear_Mask_Survey, Always_Wear_Mask_Survey) ~ region*rural_urban_code, data = raw)
+summary(Anova(multimod), univariate=T)</code></pre>
+<pre><code>## 
+## Type II MANOVA Tests:
+## 
+## Sum of squares and products for error:
+##                            Never_Wear_Mask_Survey Sometimes_Wear_Mask_Survey
+## Never_Wear_Mask_Survey                   8.298969                   1.335098
+## Sometimes_Wear_Mask_Survey               1.335098                   8.558012
+## Always_Wear_Mask_Survey                -11.042686                 -11.266079
+##                            Always_Wear_Mask_Survey
+## Never_Wear_Mask_Survey                   -11.04269
+## Sometimes_Wear_Mask_Survey               -11.26608
+## Always_Wear_Mask_Survey                   44.23570
+## 
+## ------------------------------------------
+##  
+## Term: region 
+## 
+## Sum of squares and products for the hypothesis:
+##                            Never_Wear_Mask_Survey Sometimes_Wear_Mask_Survey
+## Never_Wear_Mask_Survey                  0.9675336                   1.031265
+## Sometimes_Wear_Mask_Survey              1.0312653                   1.172121
+## Always_Wear_Mask_Survey                -3.7941207                  -4.016547
+##                            Always_Wear_Mask_Survey
+## Never_Wear_Mask_Survey                   -3.794121
+## Sometimes_Wear_Mask_Survey               -4.016547
+## Always_Wear_Mask_Survey                  15.197097
+## 
+## Multivariate Tests: region
+##                  Df test stat approx F num Df   den Df     Pr(&gt;F)    
+## Pillai            3 0.2828710 108.5832      9 9387.000 &lt; 2.22e-16 ***
+## Wilks             3 0.7240752 119.9592      9 7610.447 &lt; 2.22e-16 ***
+## Hotelling-Lawley  3 0.3714955 129.0190      9 9377.000 &lt; 2.22e-16 ***
+## Roy               3 0.3438340 358.6189      3 3129.000 &lt; 2.22e-16 ***
+## ---
+## Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+## 
+## ------------------------------------------
+##  
+## Term: rural_urban_code 
+## 
+## Sum of squares and products for the hypothesis:
+##                            Never_Wear_Mask_Survey Sometimes_Wear_Mask_Survey
+## Never_Wear_Mask_Survey                  0.9798586                  0.7168383
+## Sometimes_Wear_Mask_Survey              0.7168383                  0.5430791
+## Always_Wear_Mask_Survey                -2.7350157                 -2.0139890
+##                            Always_Wear_Mask_Survey
+## Never_Wear_Mask_Survey                   -2.735016
+## Sometimes_Wear_Mask_Survey               -2.013989
+## Always_Wear_Mask_Survey                   7.643303
+## 
+## Multivariate Tests: rural_urban_code
+##                  Df test stat  approx F num Df den Df     Pr(&gt;F)    
+## Pillai            2 0.1625339  92.22958      6   6256 &lt; 2.22e-16 ***
+## Wilks             2 0.8378157  96.42712      6   6254 &lt; 2.22e-16 ***
+## Hotelling-Lawley  2 0.1931626 100.63771      6   6252 &lt; 2.22e-16 ***
+## Roy               2 0.1909774 199.12574      3   3128 &lt; 2.22e-16 ***
+## ---
+## Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+## 
+## ------------------------------------------
+##  
+## Term: region:rural_urban_code 
+## 
+## Sum of squares and products for the hypothesis:
+##                            Never_Wear_Mask_Survey Sometimes_Wear_Mask_Survey
+## Never_Wear_Mask_Survey                 0.13241775                 0.04391835
+## Sometimes_Wear_Mask_Survey             0.04391835                 0.02941714
+## Always_Wear_Mask_Survey               -0.21615727                -0.13410491
+##                            Always_Wear_Mask_Survey
+## Never_Wear_Mask_Survey                  -0.2161573
+## Sometimes_Wear_Mask_Survey              -0.1341049
+## Always_Wear_Mask_Survey                  0.9344807
+## 
+## Multivariate Tests: region:rural_urban_code
+##                  Df test stat  approx F num Df   den Df     Pr(&gt;F)    
+## Pillai            6 0.0418657  7.380650     18 9387.000 &lt; 2.22e-16 ***
+## Wilks             6 0.9585755  7.405305     18 8844.977 &lt; 2.22e-16 ***
+## Hotelling-Lawley  6 0.0427549  7.424303     18 9377.000 &lt; 2.22e-16 ***
+## Roy               6 0.0254642 13.279579      6 3129.000 6.5347e-15 ***
+## ---
+## Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+## 
+##  Type II Sums of Squares
+##                           df Never_Wear_Mask_Survey Sometimes_Wear_Mask_Survey
+## region                     3                0.96753                   1.172121
+## rural_urban_code           2                0.97986                   0.543079
+## region:rural_urban_code    6                0.13242                   0.029417
+## residuals               3129                8.29897                   8.558012
+##                         Always_Wear_Mask_Survey
+## region                                 15.19710
+## rural_urban_code                        7.64330
+## region:rural_urban_code                 0.93448
+## residuals                              44.23570
+## 
+##  F-tests
+##                         Never_Wear_Mask_Survey Sometimes_Wear_Mask_Survey
+## region                                  121.60                     214.28
+## rural_urban_code                        123.15                      99.28
+## region:rural_urban_code                  16.64                       5.38
+##                         Always_Wear_Mask_Survey
+## region                                   179.16
+## rural_urban_code                          90.11
+## region:rural_urban_code                   11.02
+## 
+##  p-values
+##                         Never_Wear_Mask_Survey Sometimes_Wear_Mask_Survey
+## region                  &lt; 2.22e-16             &lt; 2.22e-16                
+## rural_urban_code        &lt; 2.22e-16             &lt; 2.22e-16                
+## region:rural_urban_code 1.0011e-10             0.0046608                 
+##                         Always_Wear_Mask_Survey
+## region                  &lt; 2.22e-16             
+## rural_urban_code        &lt; 2.22e-16             
+## region:rural_urban_code 3.4855e-12</code></pre>
 </div>
 
 

@@ -1,7 +1,7 @@
 ---
 title: "S&DS 363 Homework 4"
 author: "Evan Collins, Kelly Farley, Ken Stier"
-date: "11 March 2021"
+date: "30 March 2021"
 output:
   html_document:
    toc: yes
@@ -39,7 +39,7 @@ Categorical Predictor 1 (rural_urban_code): The Rural-Urban Codes are numbered 1
 
 Categorical Predictor 2 (region): Each county is associated with a state name, which we will group into regions as defined by the U.S. Census Bureau: Northeast, Midwest, South, and West.
 
-3 Continous Response Variables: A NYT survey about masking behaviors asked people whether they wear a mask in public when they expect to be within 6 feet of another person and calculated the responses for each county for never, rarely, sometimes, frequently, and always mask. We choose to look at the extremes and will examine 3 continous response variables: never mask, sometimes mask, and always mask.
+3 Continuous Response Variables: A NYT survey about masking behaviors asked people whether they wear a mask in public when they expect to be within 6 feet of another person and calculated the responses for each county for never, rarely, sometimes, frequently, and always mask. We choose to look at the extremes and will examine 3 continuous response variables: never mask, sometimes mask, and always mask.
 
 
 ```{r}
@@ -58,6 +58,7 @@ raw <-
         Rural_Urban_Code_2013 %in% c(4, 5, 6) ~ "Suburban",
         Rural_Urban_Code_2013 %in% c(7, 8, 9) ~ "Rural")
       )
+raw$rural_urban_code <- as.factor(raw$rural_urban_code) # Rural is reference
 ```
 
 # 1: Interactions Plot
@@ -101,4 +102,126 @@ Overall, there are differences between region and rural-urban codes (all multiva
 multimod <- lm(cbind(Never_Wear_Mask_Survey, Sometimes_Wear_Mask_Survey, Always_Wear_Mask_Survey) ~ region*rural_urban_code, data = raw)
 summary(Anova(multimod), univariate=T)
 ```
+
+# 3 Contrasts (Univariate and Multivariate)
+
+Let's do the following comparisons:
+
+- Multivariate - Rural vs. Suburban 
+
+- Multivariate - Rural vs. Urban 
+
+- Univariate - Rural vs. Urban
+
+- Multivariate - Interaction between Rural and Urban between regions Northeast and South
+
+- Univariate - Interaction between Rural and Urban between regions Northeast and South
+
+
+First, let's make a variable `catcomb` that combines both categorical variables.
+
+```{r}
+raw$catcomb <- paste(raw$rural_urban_code, raw$region, sep = "")
+table(raw$catcomb)
+```
+
+
+```{r}
+options(contrasts = c("contr.treatment", "contr.poly"))
+
+# Make catcomb a factor
+raw$catcomb <- as.factor(raw$catcomb) # RuralMidwest is reference level
+
+# Multivariate - Fit one way MANOVA model
+multimod2 <- lm(cbind(Never_Wear_Mask_Survey, Sometimes_Wear_Mask_Survey, Always_Wear_Mask_Survey) ~ catcomb, data = raw)
+# Univariate - Fit one way ANOVA model just for Never_Wear_Mask_Survey
+multimodNever <- lm(Never_Wear_Mask_Survey ~ catcomb, data = raw)
+
+contrasts(raw$catcomb)
+levels(raw$catcomb)
+```
+
+```{r}
+# Get multivariate contrast for Rural vs. Suburban
+linearHypothesis(multimod2, "catcombRuralNortheast + catcombRuralSouth + catcombRuralWest - catcombSuburbanMidwest - catcombSuburbanNortheast - catcombSuburbanSouth - catcombSuburbanWest = 0")
+```
+
+For the multivariate tests between Rural and Suburban shown above, we can see that the Pillai, Wilks, Hotelling-Lawley, and Roy values all have p=1.1358e-10 < 0.05. Thus, we reject the null hypothesis and conclude Rural and Suburban are significantly different.
+
+```{r}
+# Get multivariate contrast for Rural vs. Urban
+linearHypothesis(multimod2, "catcombRuralNortheast + catcombRuralSouth + catcombRuralWest - catcombUrbanMidwest - catcombUrbanNortheast - catcombUrbanSouth - catcombUrbanWest = 0")
+```
+
+For the multivariate tests between Rural and Urban shown above, we can see that the Pillai, Wilks, Hotelling-Lawley, and Roy values all have p=2.22e-16 < 0.05. Thus, we reject the null hypothesis and conclude Rural and Urban are significantly different.
+
+```{r}
+# Get univariate contrast for Rural vs. Urban
+linearHypothesis(multimodNever, "catcombRuralNortheast + catcombRuralSouth + catcombRuralWest - catcombUrbanMidwest - catcombUrbanNortheast - catcombUrbanSouth - catcombUrbanWest = 0")
+```
+
+For the univariate F-test between Rural and Urban shown above, we can see that the p<2.2e-16 < 0.05. Thus, we reject the null hypothesis and conclude Rural and Urban are significantly different for `Never_Wear_Mask_Survey`.
+
+```{r}
+#Get multivariate contrast for Northeast,South and Rural,Urban interaction
+linearHypothesis(multimod2, "catcombRuralNortheast - catcombUrbanNortheast - catcombRuralSouth + catcombUrbanSouth = 0") 
+```
+
+For the multivariate test above evaluating the interaction between Rural and Urban between regions Northeast and South, the difference is not shown to be significantly different, as the p value (0.27918) of the multivariate tests is greater than 0.05.
+
+
+```{r}
+#Get univariate contrast for Northeast,South and Rural,Urban interaction
+linearHypothesis(multimodNever, "catcombRuralNortheast - catcombUrbanNortheast - catcombRuralSouth + catcombUrbanSouth = 0")
+```
+
+For the univariate test above evaluating the interaction between Rural and Urban between regions Northeast and South, the difference in `Never_Mask_Survey` is not shown to be significantly different, as the p value (0.7188) is greater than 0.05.
+
+
+
+# 4 Multiple-Response Linear Model
+
+Let's add two other continuous variables as covariates to the model and fit as a multiple-response linear model. We will include `` and `Percent_Adults_Bachelors_or_Higher` as covariates.
+
+Let's first plot the relationships between the covariates and the three response variables. 
+
+```{r, message=F, warning=F}
+names(raw)
+# For Median_Household_Income_2019
+ggplot(raw, aes(x=Never_Wear_Mask_Survey, y=Median_Household_Income_2019)) + geom_smooth(method = lm, color = "green") + geom_point(color = "red", cex=0.5, alpha=0.3) + labs(title="Never_Wear_Mask_Survey vs. Median Household Income")
+
+ggplot(raw, aes(x=Sometimes_Wear_Mask_Survey, y=Median_Household_Income_2019)) + geom_smooth(method = lm, color = "green") + geom_point(color = "red", cex=0.5, alpha=0.3) + labs(title="Sometimes_Wear_Mask_Survey vs. Median Household Income")
+
+ggplot(raw, aes(x=Always_Wear_Mask_Survey, y=Median_Household_Income_2019)) + geom_smooth(method = lm, color = "green") + geom_point(color = "red", cex=0.5, alpha=0.3) + labs(title="Always_Wear_Mask_Survey vs. Median Household Income")
+
+# For Percent_Adults_Bachelors_or_Higher
+ggplot(raw, aes(x=Never_Wear_Mask_Survey, y=Percent_Adults_Bachelors_or_Higher)) + geom_smooth(method = lm, color = "blue") + geom_point(color = "red", cex=0.5, alpha=0.3) + labs(title="Never_Wear_Mask_Survey vs. % Adults with Bachelor's or Higher")
+
+ggplot(raw, aes(x=Sometimes_Wear_Mask_Survey, y=Percent_Adults_Bachelors_or_Higher)) + geom_smooth(method = lm, color = "blue") + geom_point(color = "red", cex=0.5, alpha=0.3) + labs(title="Sometimes_Wear_Mask_Survey vs. % Adults with Bachelor's or Higher")
+
+ggplot(raw, aes(x=Always_Wear_Mask_Survey, y=Percent_Adults_Bachelors_or_Higher)) + geom_smooth(method = lm, color = "blue") + geom_point(color = "red", cex=0.5, alpha=0.3) + labs(title="Always_Wear_Mask_Survey vs. % Adults with Bachelor's or Higher")
+```
+
+
+```{r}
+options(contrasts = c("contr.sum", "contr.poly"))
+
+multimod3 <- lm(cbind(Never_Wear_Mask_Survey, Sometimes_Wear_Mask_Survey, Always_Wear_Mask_Survey) ~ region*rural_urban_code + Median_Household_Income_2019 + Percent_Adults_Bachelors_or_Higher, data = raw)
+
+#Multivariate results and univariate results with with type 3 Sum of squares
+summary(Anova(multimod3, type = 3), univariate = T)
+```
+
+In the above output chunk labeled "Term: region", we can see region is a significant (p<2.22e-16) multivariate predictor.
+
+In the above output chunk labeled "Term: rural_urban_code", we can see rural-urban code is a significant (p<2.22e-16) multivariate predictor.
+
+In the above output chunk labeled "Term: Median_Household_Income_2019", we can see median household income is a significant (p=0.00081009) multivariate predictor.
+
+In the above output chunk labeled "Term: Percent_Adults_Bachelors_or_Higher", we can see median household income is a significant (p<2.22e-16) multivariate predictor.
+
+In the above output chunk labeled "Term: region:rural_urban_code", we can see the interaction between rural and rural-urban code is a significant (p<2.22e-16) multivariate predictor.
+
+In the bottom chunk labeled "Type III Sums of Squares", for each response variables, we can see the type III sum of squares, type III F-tests, and associated p values. From these univariate results, we can see that region is significant for each of the three response variables (Never_Wear_Mask_Survey, Sometimes_Wear_Mask_Survey, Always_Wear_Mask_Survey). Moreover, rural-urban code is significant for each of the three response variables. Median household income is significant just for Never_Wear_Mask_Survey. Percent of adults with a bachelor's degree of higher is significant for all three response variables. And the interaction between region and rural-urban code is significant for each of the three response variables.
+
 

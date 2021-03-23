@@ -18,6 +18,11 @@ rm(list=ls())
 # Load packages
 library(car)
 library(tidyverse)
+library(MASS)
+library(biotools)
+library(DiscriMiner)
+library(klaR)
+source("http://www.reuningscherer.net/Multivariate/R/CSQPlot.r.txt")
 ```
 
 # Contributors
@@ -224,4 +229,23 @@ In the above output chunk labeled "Term: region:rural_urban_code", we can see th
 
 In the bottom chunk labeled "Type III Sums of Squares", for each response variables, we can see the type III sum of squares, type III F-tests, and associated p values. From these univariate results, we can see that region is significant for each of the three response variables (Never_Wear_Mask_Survey, Sometimes_Wear_Mask_Survey, Always_Wear_Mask_Survey). Moreover, rural-urban code is significant for each of the three response variables. Median household income is significant just for Never_Wear_Mask_Survey. Percent of adults with a bachelor's degree of higher is significant for all three response variables. And the interaction between region and rural-urban code is significant for each of the three response variables.
 
+# 5 Chi-Square Quantile Plots
+
+```{r}
+CSQPlot(multimod3$residuals)
+
+modnever <- lm(Never_Wear_Mask_Survey ~ region*rural_urban_code + Median_Household_Income_2019 + Percent_Adults_Bachelors_or_Higher, data = raw)
+modsometimes <- lm(Sometimes_Wear_Mask_Survey ~ region*rural_urban_code + Median_Household_Income_2019 + Percent_Adults_Bachelors_or_Higher, data = raw)
+modalways <- lm(Always_Wear_Mask_Survey ~ region*rural_urban_code + Median_Household_Income_2019 + Percent_Adults_Bachelors_or_Higher, data = raw)
+#qqPlot(modnever$residuals)
+#qqPlot(modsometimes$residuals)
+#qqPlot(modalways$residuals)
+plot(modnever, which = c(1,2), pch=19)
+plot(modsometimes, which = c(1,2), pch=19)
+plot(modalways, which = c(1,2), pch=19)
+
+MASS::boxcox(modnever, optimize=TRUE)
+```
+
+We see marked heteroskedasticity in the Never and Sometimes residuals plots. Looks like it's boxcox time!
 

@@ -237,15 +237,36 @@ CSQPlot(multimod3$residuals)
 modnever <- lm(Never_Wear_Mask_Survey ~ region*rural_urban_code + Median_Household_Income_2019 + Percent_Adults_Bachelors_or_Higher, data = raw)
 modsometimes <- lm(Sometimes_Wear_Mask_Survey ~ region*rural_urban_code + Median_Household_Income_2019 + Percent_Adults_Bachelors_or_Higher, data = raw)
 modalways <- lm(Always_Wear_Mask_Survey ~ region*rural_urban_code + Median_Household_Income_2019 + Percent_Adults_Bachelors_or_Higher, data = raw)
-#qqPlot(modnever$residuals)
-#qqPlot(modsometimes$residuals)
-#qqPlot(modalways$residuals)
 plot(modnever, which = c(1,2), pch=19)
 plot(modsometimes, which = c(1,2), pch=19)
 plot(modalways, which = c(1,2), pch=19)
 
-MASS::boxcox(modnever, optimize=TRUE)
+bcnever <- MASS::boxcox(Never_Wear_Mask_Survey+1/1000000000 ~ region*rural_urban_code + Median_Household_Income_2019 + Percent_Adults_Bachelors_or_Higher, data = raw, optimize=TRUE)
+lambdanever <- bcnever$x[which.max(bcnever$y)]
+bcsometimes <- MASS::boxcox(Sometimes_Wear_Mask_Survey+1/1000000000 ~ region*rural_urban_code + Median_Household_Income_2019 + Percent_Adults_Bachelors_or_Higher, data = raw, optimize=TRUE)
+lambdasometimes <- bcsometimes$x[which.max(bcsometimes$y)]
+bcalways <- MASS::boxcox(Always_Wear_Mask_Survey+1/1000000000 ~ region*rural_urban_code + Median_Household_Income_2019 + Percent_Adults_Bachelors_or_Higher, data = raw, optimize=TRUE)
+lambdaalways <- bcalways$x[which.max(bcalways$y)]
+
+raw$newNever <- (raw$Never_Wear_Mask_Survey)^lambdanever
+raw$newSometimes <- (raw$Sometimes_Wear_Mask_Survey)^lambdasometimes
+raw$newAlways <- (raw$Always_Wear_Mask_Survey)^lambdaalways
+
+modnever2 <- lm(newNever ~ region*rural_urban_code + Median_Household_Income_2019 + Percent_Adults_Bachelors_or_Higher, data = raw)
+modsometimes2 <- lm(newSometimes ~ region*rural_urban_code + Median_Household_Income_2019 + Percent_Adults_Bachelors_or_Higher, data = raw)
+modalways2 <- lm(newAlways ~ region*rural_urban_code + Median_Household_Income_2019 + Percent_Adults_Bachelors_or_Higher, data = raw)
+plot(modnever2, which = c(1,2), pch=19)
+plot(modsometimes2, which = c(1,2), pch=19)
+plot(modalways2, which = c(1,2), pch=19)
+
+multimod4 <- lm(cbind(newNever, newSometimes, newAlways) ~ region*rural_urban_code + Median_Household_Income_2019 + Percent_Adults_Bachelors_or_Higher, data = raw)
+
+summary(Anova(multimod3, type = 3), univariate = T)
+
+CSQPlot(multimod3$residuals, label = "before boxcox")
+CSQPlot(multimod4$residuals, label = "after boxcox")
 ```
 
 We see marked heteroskedasticity in the Never and Sometimes residuals plots. Looks like it's boxcox time!
 
+#6 MRPP Test

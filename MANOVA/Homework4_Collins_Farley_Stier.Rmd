@@ -233,21 +233,33 @@ In the bottom chunk labeled "Type III Sums of Squares", for each response variab
 
 ```{r}
 CSQPlot(multimod3$residuals)
+```
 
+Ooh, I don't love the look of that chi-square quantile plot. Let's take a closer look at the linear model features.
+
+```{r}
 modnever <- lm(Never_Wear_Mask_Survey ~ region*rural_urban_code + Median_Household_Income_2019 + Percent_Adults_Bachelors_or_Higher, data = raw)
 modsometimes <- lm(Sometimes_Wear_Mask_Survey ~ region*rural_urban_code + Median_Household_Income_2019 + Percent_Adults_Bachelors_or_Higher, data = raw)
 modalways <- lm(Always_Wear_Mask_Survey ~ region*rural_urban_code + Median_Household_Income_2019 + Percent_Adults_Bachelors_or_Higher, data = raw)
 plot(modnever, which = c(1,2), pch=19)
 plot(modsometimes, which = c(1,2), pch=19)
 plot(modalways, which = c(1,2), pch=19)
+```
 
+That could do it. There's considerable heteroskedasticity in the data. It looks like we're going to have to try a boxcox transformation.
+
+```{r}
 bcnever <- MASS::boxcox(Never_Wear_Mask_Survey+1/1000000000 ~ region*rural_urban_code + Median_Household_Income_2019 + Percent_Adults_Bachelors_or_Higher, data = raw, optimize=TRUE)
 lambdanever <- bcnever$x[which.max(bcnever$y)]
 bcsometimes <- MASS::boxcox(Sometimes_Wear_Mask_Survey+1/1000000000 ~ region*rural_urban_code + Median_Household_Income_2019 + Percent_Adults_Bachelors_or_Higher, data = raw, optimize=TRUE)
 lambdasometimes <- bcsometimes$x[which.max(bcsometimes$y)]
 bcalways <- MASS::boxcox(Always_Wear_Mask_Survey+1/1000000000 ~ region*rural_urban_code + Median_Household_Income_2019 + Percent_Adults_Bachelors_or_Higher, data = raw, optimize=TRUE)
 lambdaalways <- bcalways$x[which.max(bcalways$y)]
+```
 
+We have our lambdas locked and loaded. Note, we added a minuscule amount to the survey values. That's just because the boxcox function requires positive values, and there were some Aileens in the mix.
+
+```{r}
 raw$newNever <- (raw$Never_Wear_Mask_Survey)^lambdanever
 raw$newSometimes <- (raw$Sometimes_Wear_Mask_Survey)^lambdasometimes
 raw$newAlways <- (raw$Always_Wear_Mask_Survey)^lambdaalways
@@ -258,15 +270,17 @@ modalways2 <- lm(newAlways ~ region*rural_urban_code + Median_Household_Income_2
 plot(modnever2, which = c(1,2), pch=19)
 plot(modsometimes2, which = c(1,2), pch=19)
 plot(modalways2, which = c(1,2), pch=19)
+```
 
+After transformation, the heteroskedasticity looks to be fairly diminished. Good job, boxcox! Let's check out the chi square quantile plot for our linear model.
+
+```{r}
 multimod4 <- lm(cbind(newNever, newSometimes, newAlways) ~ region*rural_urban_code + Median_Household_Income_2019 + Percent_Adults_Bachelors_or_Higher, data = raw)
 
 summary(Anova(multimod3, type = 3), univariate = T)
-
-CSQPlot(multimod3$residuals, label = "before boxcox")
-CSQPlot(multimod4$residuals, label = "after boxcox")
+CSQPlot(multimod4$residuals)
 ```
 
-We see marked heteroskedasticity in the Never and Sometimes residuals plots. Looks like it's boxcox time!
+That looks a lot better, especially at the low values. At higher values, the points start to stray outside the 95% CI, but it looks acceptable overall.
 
 #6 MRPP Test

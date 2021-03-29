@@ -22,6 +22,7 @@ library(MASS)
 library(biotools)
 library(DiscriMiner)
 library(klaR)
+library(vegan)
 source("http://www.reuningscherer.net/Multivariate/R/CSQPlot.r.txt")
 ```
 
@@ -283,4 +284,32 @@ CSQPlot(multimod4$residuals)
 
 That looks a lot better, especially at the low values. At higher values, the points start to stray outside the 95% CI, but it looks acceptable overall.
 
-#6 MRPP Test
+# 6 MRPP Test
+
+Our data set is not Overwhelmingly Large™, so there is a reasonable expectation that MRPP will be able to provide a satisfactorily reliable p-value. Let's give it a go.
+
+```{r, eval=FALSE}
+(mrppout <- mrpp(raw[,c("newNever", "newSometimes", "newAlways")], raw$rural_urban_code))
+```
+
+Now, RStudio's knitting function seems to have some difficulty processing MRPP. That's not much of a surprise; it takes my computer long enough to run as is, and we've had our share of issues with things running fine but not knitting properly. In any case, we had to disable evaluation of the function in order to knit, and the would-be output is copied below.
+
+```
+Dissimilarity index: euclidean 
+Weights for groups:  n 
+
+Class means and counts:
+
+      Rural  Suburban Urban 
+delta 0.2373 0.2383   0.2187
+n     1077   899      1165  
+
+Chance corrected within-group agreement A: 0.06974 
+Based on observed delta 0.2307 and expected delta 0.248 
+
+Significance of delta: 0.001 
+Permutation: free
+Number of permutations: 999
+```
+
+And those results look pretty good! The p-value is 0.001 according to the above output, so MRPP tells us that the groups cluster well enough and are distinct by the procedure's permutation-delta method.

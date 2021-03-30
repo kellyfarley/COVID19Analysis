@@ -23,7 +23,32 @@ library(biotools)
 library(DiscriMiner)
 library(klaR)
 library(vegan)
-source("http://www.reuningscherer.net/Multivariate/R/CSQPlot.r.txt")
+
+#source("http://www.reuningscherer.net/Multivariate/R/CSQPlot.r.txt")
+#The file wouldn't knit because the source link timed out, so I just copied the contents to run natively:
+CSQPlot<-function(vars,label="Chi-Square Quantile Plot"){
+  #usually, vars is xxx$residuals or data from one group and label is for plot
+  x<-cov(scale(vars),use="pairwise.complete.obs")
+  squares<-sort(diag(as.matrix(scale(vars))%*%solve(x)%*%as.matrix(t(scale(vars)))))
+  quantiles<-quantile(squares)
+  hspr<-quantiles[4]-quantiles[2]
+  cumprob<-c(1:length(vars[,1]))/length(vars[,1])-1/(2*length(vars[,1]))
+  degf<-dim(x)[1]
+  quants<-qchisq(cumprob,df=degf)
+  gval<-(quants**(-1+degf/2))/(exp(quants/2)*gamma(degf/2)*(sqrt(2)**degf))
+  scale<-hspr / (qchisq(.75,degf)-qchisq(.25,degf))
+  se<-(scale/gval)*sqrt(cumprob*(1-cumprob)/length(squares))
+  lower<-quants-2*se
+  upper<-quants+2*se
+  
+  plot(quants,squares,col='red',pch=19,cex=1.2,xlab="Chi-Square Quantiles",
+       ylab="Squared MH Distance",main=paste("Chi-Square Quantiles for",label),ylim=range(upper,lower, squares) , xlim=range(c(0,quants)))
+  lines(c(0,100),c(0,100),col=1)
+  lines(quants,upper,col="blue",lty=2,lwd=2)
+  lines(quants,lower,col="blue",lty=2,lwd=2)
+  legend("topleft",c("Data","95% Conf Limits"),lty=c(0,2),col=c("red","blue"),lwd=c(2,2),
+         pch=c(19,NA))
+}
 ```
 
 # Contributors
@@ -232,6 +257,8 @@ In the bottom chunk labeled "Type III Sums of Squares", for each response variab
 
 # 5 Chi-Square Quantile Plots
 
+Looking at the CSQ plot for the existing model...
+
 ```{r}
 CSQPlot(multimod3$residuals)
 ```
@@ -278,18 +305,59 @@ After transformation, the heteroskedasticity looks to be fairly diminished. Good
 ```{r}
 multimod4 <- lm(cbind(newNever, newSometimes, newAlways) ~ region*rural_urban_code + Median_Household_Income_2019 + Percent_Adults_Bachelors_or_Higher, data = raw)
 
-summary(Anova(multimod3, type = 3), univariate = T)
+summary(Anova(multimod4, type = 3), univariate = T)
 CSQPlot(multimod4$residuals)
 ```
 
-That looks a lot better, especially at the low values. At higher values, the points start to stray outside the 95% CI, but it looks acceptable overall.
+That looks a lot better, especially at the low values. At higher values, the points start to stray outside the 95% CI. Perhaps boxcox isn't really the way to go here. At JDRS's recommendation, let's go for Logit instead.
+
+```{r}
+raw$newNever2 <- logit(raw$Never_Wear_Mask_Survey)
+raw$newSometimes2 <- logit(raw$Sometimes_Wear_Mask_Survey)
+raw$newAlways2 <- logit(raw$Always_Wear_Mask_Survey)
+
+modnever3 <- lm(newNever2 ~ region*rural_urban_code + Median_Household_Income_2019 + Percent_Adults_Bachelors_or_Higher, data = raw)
+modsometimes3 <- lm(newSometimes2 ~ region*rural_urban_code + Median_Household_Income_2019 + Percent_Adults_Bachelors_or_Higher, data = raw)
+modalways3 <- lm(newAlways2 ~ region*rural_urban_code + Median_Household_Income_2019 + Percent_Adults_Bachelors_or_Higher, data = raw)
+plot(modnever3, which = c(1,2), pch=19)
+plot(modsometimes3, which = c(1,2), pch=19)
+plot(modalways3, which = c(1,2), pch=19)
+
+multimod5 <- lm(cbind(newNever2, newSometimes2, newAlways2) ~ region*rural_urban_code + Median_Household_Income_2019 + Percent_Adults_Bachelors_or_Higher, data = raw)
+
+summary(Anova(multimod5, type = 3), univariate = T)
+CSQPlot(multimod5$residuals)
+```
+
+Not terribly happy with how that came out. Let's draw some histograms to see why.
+
+```{r}
+hist(raw$Never_Wear_Mask_Survey)
+hist(raw$Sometimes_Wear_Mask_Survey)
+hist(raw$Always_Wear_Mask_Survey)
+
+hist(logit(raw$Never_Wear_Mask_Survey))
+hist(logit(raw$Sometimes_Wear_Mask_Survey))
+hist(logit(raw$Always_Wear_Mask_Survey))
+```
+
+That adds up. Partly literally -- some of the issue is that the variables are necessarily interrelated and interdependent, in that the five mask survey response variables all fall on a single multidimensional curve by the nature of how they're determined. It's probably best to leave them untransformed and say that the data just have an unusual quality, per JDRS's recommendation, or alternatively to merge the variables into a single metric and add different response variables, which JDRS suggested but said is not necessarily warranted for the purposes of this pset. Before giving up on transformation, let's try applying logit to just the "never" variable, since it's the only one that is horribly skewed and butting up against 0.
+
+```{r}
+multimod6 <- lm(cbind(newNever2, Sometimes_Wear_Mask_Survey, Always_Wear_Mask_Survey) ~ region*rural_urban_code + Median_Household_Income_2019 + Percent_Adults_Bachelors_or_Higher, data = raw)
+
+summary(Anova(multimod6, type = 3), univariate = T)
+CSQPlot(multimod6$residuals)
+```
+
+Our best options appear to be either applying a logit transformation to the never-wears-mask values, or to just not transform at all. Given the nature of the data, no transformation is probably the way to go. At least, that's what JDRS advised, and it makes sense.
 
 # 6 MRPP Test
 
 Our data set is not Overwhelmingly Large™, so there is a reasonable expectation that MRPP will be able to provide a satisfactorily reliable p-value. Let's give it a go.
 
 ```{r, eval=FALSE}
-(mrppout <- mrpp(raw[,c("newNever", "newSometimes", "newAlways")], raw$rural_urban_code))
+(mrppout <- mrpp(raw[,c("Never_Wear_Mask_Survey", "Sometimes_Wear_Mask_Survey", "Always_Wear_Mask_Survey")], raw$rural_urban_code))
 ```
 
 Now, RStudio's knitting function seems to have some difficulty processing MRPP. That's not much of a surprise; it takes my computer long enough to run as is, and we've had our share of issues with things running fine but not knitting properly. In any case, we had to disable evaluation of the function in order to knit, and the would-be output is copied below.
@@ -301,15 +369,15 @@ Weights for groups:  n
 Class means and counts:
 
       Rural  Suburban Urban 
-delta 0.2373 0.2383   0.2187
+delta 0.2015 0.1966   0.1838
 n     1077   899      1165  
 
-Chance corrected within-group agreement A: 0.06974 
-Based on observed delta 0.2307 and expected delta 0.248 
+Chance corrected within-group agreement A: 0.07795 
+Based on observed delta 0.1935 and expected delta 0.2099 
 
 Significance of delta: 0.001 
 Permutation: free
 Number of permutations: 999
 ```
 
-And those results look pretty good! The p-value is 0.001 according to the above output, so MRPP tells us that the groups cluster well enough and are distinct by the procedure's permutation-delta method.
+And those results look pretty good! The p-value is 0.001 according to the above output, so MRPP tells us that the multivariate means of the groups are significantly different.

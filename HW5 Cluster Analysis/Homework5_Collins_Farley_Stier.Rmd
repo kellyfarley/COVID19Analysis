@@ -125,7 +125,24 @@ boxplot(raw$tr_covid, raw$tr_log_income, raw$tr_log_poverty, names=c("covid case
 Gorgeous! All nicely standardized.
 
 # 2 Hierarchical Cluster Analysis
-Try various forms of hierarchical cluster analysis.  Try at least two different distance metrics and two agglomeration methods.  Produce dendrograms and comment on what you observe.
+
+*Try various forms of hierarchical cluster analysis.  Try at least two different distance metrics and two agglomeration methods.  Produce dendrograms and comment on what you observe.*
+
+```{r}
+euclid <- dist(raw[,c("tr_covid","tr_log_income","tr_log_poverty")], method="euclidean")
+euclusters_ward <- hclust(euclid, method="ward.D")
+plot(euclusters_ward,labels=as.vector(raw[,"County_Name"][[1]]),cex=0.1,xlab="",ylab="Distance",lwd=0.2, main="Euclidean/Ward")
+
+euclusters_complete <- hclust(euclid, method="complete")
+plot(euclusters_ward,labels=as.vector(raw[,"County_Name"][[1]]),cex=0.1,xlab="",ylab="Distance",lwd=0.2, main="Euclidean/Complete")
+
+cheby <- dist(raw[,c("tr_covid","tr_log_income","tr_log_poverty")], method="minkowski", p=20)
+chebsters_ward <- hclust(cheby, method="ward.D")
+plot(chebsters_ward,labels=as.vector(raw[,"County_Name"][[1]]),cex=0.1,xlab="",ylab="Distance",lwd=0.2, main="Chebychev/Ward")
+
+chebsters_complete <- hclust(cheby, method="complete")
+plot(chebsters_ward,labels=as.vector(raw[,"County_Name"][[1]]),cex=0.1,xlab="",ylab="Distance",lwd=0.2, main="Chebychev/Complete")
+```
 
 # 3 If possible, run the SAS macro or the R function to think about how many groups you want to retain (i.e. get the plots of cluster distance, R-squared, etc).  If you can’t run this, discuss how many groups you think are present.  
 

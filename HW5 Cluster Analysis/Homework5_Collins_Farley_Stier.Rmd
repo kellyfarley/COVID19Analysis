@@ -66,12 +66,9 @@ COVID-19 infection and death statistics from U.S. counties (sourced from NYT), c
 
 *Data of relevance for this pset:*
 
-Categorical Predictor 1 (rural_urban_code): The Rural-Urban Codes are numbered 1-9 according to descriptions provided by the USDA. We will regroup codes 1 through 9 as into three groups: (1) "Urban" for codes 1-3, (2) "Suburban" for codes 4-6, and (3) "Rural" for codes 7-9.
+In previous psets, we had determined our favorite discriminating variables to be median household income, poverty rate, and confirmed COVID cases as a percentage of the population; we also determined that the log of each of these variables is more useful and normal than the raw variables, so we will be applying that transformation.
 
-Categorical Predictor 2 (region): Each county is associated with a state name, which we will group into regions as defined by the U.S. Census Bureau: Northeast, Midwest, South, and West.
-
-3 Continuous Response Variables: A NYT survey about masking behaviors asked people whether they wear a mask in public when they expect to be within 6 feet of another person and calculated the responses for each county for never, rarely, sometimes, frequently, and always mask. We choose to look at the extremes and will examine 3 continuous response variables: never mask, sometimes mask, and always mask.
-
+Should we choose to use these categorical variables for reference, the `rural_urban_code` and the `region` variables defined below tend to be great for grouping comparisons. The Rural-Urban Codes are numbered 1-9 according to descriptions provided by the USDA, and we consolidate them into: (1) "Urban" for codes 1-3, (2) "Suburban" for codes 4-6, and (3) "Rural" for codes 7-9. Region is determined for each county/state by the Census Bureau (Northeast, Midwest, South, and West).
 
 ```{r}
 raw <- readr::read_csv("https://evancollins.com/covid_and_demographics.csv")
@@ -90,10 +87,42 @@ raw <-
         Rural_Urban_Code_2013 %in% c(7, 8, 9) ~ "Rural")
       )
 raw$rural_urban_code <- as.factor(raw$rural_urban_code) # Rural is reference
+
+# log transformations of our continuous variables
+raw$logMedian_Household_Income_2019 <- log(raw$Median_Household_Income_2019 + 0.0001)
+raw$logPercent_Poverty_2019 <- log(raw$Percent_Poverty_2019 + 0.0001)
+raw$logCovid_Confirmed_Cases_as_pct <- log(raw$Covid_Confirmed_Cases_as_pct + 0.0001)
 ```
 
 # 1 Distance Metrics
-Think about what distance metrics are appropriate for your data based on data type. Write a few sentences about this.  Also think about whether you should standardize and/or transform your data (comment as appropriate).
+
+*Think about what distance metrics are appropriate for your data based on data type. Write a few sentences about this.  Also think about whether you should standardize and/or transform your data (comment as appropriate).*
+
+In our case, it probably makes the most sense to go with Euclidean distance, since we're working with a set of continuous variables without special relationships that might necessitate something like city distance (such as categorical or binary data). We might want to consider using one of the measures JDRS mentioned for ecological data (i.e., Sorenson or Jaccard), given that epidemiological data may bear similarity, but it isn't strictly called for.
+
+Regarding standardization, that would almost definitely be a good idea. If any variables are scaled or distributed very differently, that difference will weight the greater/broader variables over the others. We might make an exception for groups of variables on standard scales (like a five-point scale) or if the differences are based on some intrinsic property of the variables (like if they're interrelated as in our previous pset), but those cases don't apply here. Let's throw together a very quick box plot just to see how our variables look:
+
+```{r}
+boxplot(raw$logCovid_Confirmed_Cases_as_pct, raw$logMedian_Household_Income_2019, raw$logPercent_Poverty_2019, names=c("covid cases", "household income", "poverty rate"))
+```
+
+Yeah, those variables are very far from each other and differently distributed too. Let's go ahead and standardize by subtracting the mean and dividing by standard deviation.
+
+```{r}
+raw$tr_log_covid <- (raw$logCovid_Confirmed_Cases_as_pct - mean(raw$logCovid_Confirmed_Cases_as_pct)) / sd(raw$logCovid_Confirmed_Cases_as_pct)
+raw$tr_log_income <- (raw$logMedian_Household_Income_2019 - mean(raw$logMedian_Household_Income_2019)) / sd(raw$logMedian_Household_Income_2019)
+raw$tr_log_poverty <- (raw$logPercent_Poverty_2019 - mean(raw$logPercent_Poverty_2019)) / sd(raw$logPercent_Poverty_2019)
+boxplot(raw$tr_log_covid, raw$tr_log_income, raw$tr_log_poverty, names=c("covid cases", "household income", "poverty rate"))
+```
+
+It looks a lot better! But the distribution of COVID cases could fit the others better. It looks like the issue might be from outliers created by the log transformation. Let's try that one without.
+
+```{r}
+raw$tr_covid <- (raw$Covid_Confirmed_Cases_as_pct - mean(raw$Covid_Confirmed_Cases_as_pct)) / sd(raw$Covid_Confirmed_Cases_as_pct)
+boxplot(raw$tr_covid, raw$tr_log_income, raw$tr_log_poverty, names=c("covid cases", "household income", "poverty rate"))
+```
+
+Gorgeous! All nicely standardized.
 
 # 2 Hierarchical Cluster Analysis
 Try various forms of hierarchical cluster analysis.  Try at least two different distance metrics and two agglomeration methods.  Produce dendrograms and comment on what you observe.

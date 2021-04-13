@@ -49,6 +49,8 @@ CSQPlot<-function(vars,label="Chi-Square Quantile Plot"){
   legend("topleft",c("Data","95% Conf Limits"),lty=c(0,2),col=c("red","blue"),lwd=c(2,2),
          pch=c(19,NA))
 }
+
+source("http://reuningscherer.net/multivariate/R/HClusEval3.R.txt")
 ```
 
 # Contributors
@@ -128,21 +130,31 @@ Gorgeous! All nicely standardized.
 
 *Try various forms of hierarchical cluster analysis.  Try at least two different distance metrics and two agglomeration methods.  Produce dendrograms and comment on what you observe.*
 
+Let's go ahead and make four dendrograms, with two distance metrics and two agglomeration methods. The distance methods are both Minowskis with very different exponents: Euclidean and a Chebychev approximation. For agglomeration methods, there are only so many options in `hclust`, and it made sense to keep our work within the same function, so we're using Ward (specifically, `ward.D`) and complete linkage.
+
 ```{r}
 euclid <- dist(raw[,c("tr_covid","tr_log_income","tr_log_poverty")], method="euclidean")
 euclusters_ward <- hclust(euclid, method="ward.D")
-plot(euclusters_ward,labels=as.vector(raw[,"County_Name"][[1]]),cex=0.1,xlab="",ylab="Distance",lwd=0.2, main="Euclidean/Ward")
+plot(euclusters_ward,labels=as.vector(raw[,"County_Name"][[1]]),cex=0.1,xlab="",ylab="Distance",lwd=0.2, main="Euclidean/Ward"); rect.hclust(euclusters_ward, k = 4)
 
 euclusters_complete <- hclust(euclid, method="complete")
-plot(euclusters_ward,labels=as.vector(raw[,"County_Name"][[1]]),cex=0.1,xlab="",ylab="Distance",lwd=0.2, main="Euclidean/Complete")
+plot(euclusters_complete,labels=as.vector(raw[,"County_Name"][[1]]),cex=0.1,xlab="",ylab="Distance",lwd=0.2, main="Euclidean/Complete"); rect.hclust(euclusters_complete, k = 6)
 
 cheby <- dist(raw[,c("tr_covid","tr_log_income","tr_log_poverty")], method="minkowski", p=20)
 chebsters_ward <- hclust(cheby, method="ward.D")
-plot(chebsters_ward,labels=as.vector(raw[,"County_Name"][[1]]),cex=0.1,xlab="",ylab="Distance",lwd=0.2, main="Chebychev/Ward")
+plot(chebsters_ward,labels=as.vector(raw[,"County_Name"][[1]]),cex=0.1,xlab="",ylab="Distance",lwd=0.2, main="Chebychev/Ward"); rect.hclust(chebsters_ward, k = 5)
 
 chebsters_complete <- hclust(cheby, method="complete")
-plot(chebsters_ward,labels=as.vector(raw[,"County_Name"][[1]]),cex=0.1,xlab="",ylab="Distance",lwd=0.2, main="Chebychev/Complete")
+plot(chebsters_complete,labels=as.vector(raw[,"County_Name"][[1]]),cex=0.1,xlab="",ylab="Distance",lwd=0.2, main="Chebychev/Complete"); rect.hclust(chebsters_complete, k = 8)
 ```
+
+I can see why the `hclust` documentation lists Ward clustering first. It claims to identify "compact, spherical clusters", and it's hard to tell from these dendrograms exactly what that does, but it's clear that the Ward's method gives much neater groupings than the complete linkage method. That is, the complete linkage clusters become very granular at much higher distances. It looks like Ward's might be the way to go, at least for these data.
+
+On first glance / visual inspection, the Ward-method plots have a few discrete clusters (4 and 5, respectively), as shown in the overlays on the dendrograms. To get something that reasonably resembles actual clusters on the complete linkage-method plots, you have to add more boxes (6 and 8). These plots also have much smaller clusters, of only a handful of counties by comparison.
+
+It will be interesting to see if these clusters correlate nicely with the region or rural-urban code classifications.
+
+The really unfortunate thing here is that the termini of the dendrograms are so close together that it's difficult to read the labels. That said, the labels don't contribute all that much given the sheer number of counties and the fact that the names don't convey much information. C'est la vie, c'est la data.
 
 # 3 If possible, run the SAS macro or the R function to think about how many groups you want to retain (i.e. get the plots of cluster distance, R-squared, etc).  If you can’t run this, discuss how many groups you think are present.  
 

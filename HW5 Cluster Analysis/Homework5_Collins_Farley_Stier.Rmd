@@ -1,7 +1,7 @@
 ---
 title: "S&DS 363 Homework 5"
 author: "Evan Collins, Kelly Farley, Ken Stier"
-date: "30 March 2021"
+date: "15 April 2021"
 output:
   html_document:
    toc: yes
@@ -23,6 +23,11 @@ library(biotools)
 library(DiscriMiner)
 library(klaR)
 library(vegan)
+library(aplpack)
+library(fpc)
+library(cluster)
+library(ape)
+library(amap)
 
 #source("http://www.reuningscherer.net/Multivariate/R/CSQPlot.r.txt")
 #The file wouldn't knit because the source link timed out, so I just copied the contents to run natively:
@@ -156,9 +161,219 @@ It will be interesting to see if these clusters correlate nicely with the region
 
 The really unfortunate thing here is that the termini of the dendrograms are so close together that it's difficult to read the labels. That said, the labels don't contribute all that much given the sheer number of counties and the fact that the names don't convey much information. C'est la vie, c'est la data.
 
-# 3 If possible, run the SAS macro or the R function to think about how many groups you want to retain (i.e. get the plots of cluster distance, R-squared, etc).  If you can’t run this, discuss how many groups you think are present.  
+As an alternative in order to get more pedagogically valuable results (i.e., so we can see what's going on in the dendrograms) from hierarchical clustering, let's focus on the 67 counties of everyone's favorite state, Florida. 
+
+```{r}
+# Create new dataset with just the 8 CT counties
+raw_FL <- raw[raw$State_Name=="Florida", ]
+
+euclid <- dist(raw_FL[,c("tr_covid","tr_log_income","tr_log_poverty")], method="euclidean")
+euclusters_ward <- hclust(euclid, method="ward.D")
+plot(euclusters_ward,labels=as.vector(raw_FL[,"County_Name"][[1]]),cex=0.1,xlab="",ylab="Distance",lwd=0.2, main="Euclidean/Ward"); rect.hclust(euclusters_ward, k = 4)
+
+euclusters_complete <- hclust(euclid, method="complete")
+plot(euclusters_complete,labels=as.vector(raw_FL[,"County_Name"][[1]]),cex=0.1,xlab="",ylab="Distance",lwd=0.2, main="Euclidean/Complete"); rect.hclust(euclusters_complete, k = 6)
+
+cheby <- dist(raw_FL[,c("tr_covid","tr_log_income","tr_log_poverty")], method="minkowski", p=20)
+chebsters_ward <- hclust(cheby, method="ward.D")
+plot(chebsters_ward,labels=as.vector(raw_FL[,"County_Name"][[1]]),cex=0.1,xlab="",ylab="Distance",lwd=0.2, main="Chebychev/Ward"); rect.hclust(chebsters_ward, k = 5)
+
+chebsters_complete <- hclust(cheby, method="complete")
+plot(chebsters_complete,labels=as.vector(raw_FL[,"County_Name"][[1]]),cex=0.1,xlab="",ylab="Distance",lwd=0.2, main="Chebychev/Complete"); rect.hclust(chebsters_complete, k = 8)
+```
+
+It seems that Euclidean/Ward gives the cleanest, most sensible clusters (4 in total).
+
+To get an idea of the characteristics of these groups, let's examine the clusters.
+
+```{r}
+cuts <- cutree(euclusters_ward, k = 4)
+
+# add cuts to dataset
+raw_FL$cuts <- as.character(cuts)
+library(lattice)
+stripplot(Rural_Urban_Code_2013 ~ cuts, data = raw_FL, jitter=0.1)
+```
+
+The greater the `Rural_Urban_Code_2013`, the more rural the county. It seems that the third cluster has the greatest proportion of rural counties, and cluster 2 has the greatest proportion of urban counties.
+
+Further by-cluster analysis could be conducted.
+
+# 3 If possible, run the SAS macro or the R function to think about how many groups you want to retain (i.e. get the plots of cluster distance, R-squared, etc).  If you can’t run this, discuss how many groups you think are present.
+
+
+Data is approximately normal, so we will run this 'number of clusters' metric from online.
+
+```{r}
+source("http://reuningscherer.net/multivariate/R/HClusEval3.R.txt")
+#Call the function
+hclus_eval(raw_FL[,c("tr_covid","tr_log_income","tr_log_poverty")], dist_m = 'euclidean', clus_m = 'ward.D', plot_op = T, print_num = 15)
+```
+
+From the guidance statistics, the number of clusters is not totally clear. There is a localized peak at the root mean squared standard deviation (RMSSTD) at 4, which reinforces our conclusion that there are 4 distinct clusters. The r-squared tapers off at 2 (and subtly at 4), which may suggest a lower number of clusters is optimal. The semi-partial r-squared also flattens near 2 (subtly at 4), which may suggest a lower number of clusters is optimal.
+
+*Addendum*
+
+Make plot of five cluster solution in space designated by first two principal components.
+
+```{r}
+#ctnorm <- raw_FL[,c("tr_covid","tr_log_income","tr_log_poverty")]
+#rownames(ctnorm) <- as.factor(pull(raw_FL[, 2]))
+#ctnorm <- scale(na.omit(ctnorm))
+
+clusplot(raw_FL[,c("tr_covid","tr_log_income","tr_log_poverty")], cuts, color = TRUE, shade = TRUE, labels = 2, lines = 0,
+         main = "County Cluster Plot, Ward's Method, First two PC", cex = .5)
+```
+
+Make plot of five cluster solution in space designated by first two discriminant functions.
+
+```{r}
+plotcluster(raw_FL[,c("tr_covid","tr_log_income","tr_log_poverty")], cuts, main = "Four Cluster Solution in DA Space", xlab = "First Discriminant Function", ylab = "Second Discriminant Function", cex = .8)
+```
 
 # 4 Run k-means clustering on your data.  Compare results to what you got in 3.)  Include a sum of squares vs. k (number of clusters) plot and comment on how many groups exist.
+
+Produces screeplot like diagram with randomized comparison based on randomization within columns (i.e. as if points had been randomly assigned data values, one from each column. Keeps total internal SS the same.
+
+Evaluates total cluster number 1-15 to optimize.
+
+```{r, message=F, warning=F}
+#kdata is just normalized input dataset
+ctnorm <- raw_FL[,c("tr_covid","tr_log_income","tr_log_poverty")]
+rownames(ctnorm) <- as.vector(raw_FL[,"County_Name"][[1]])
+ctnorm <- scale(na.omit(ctnorm))
+
+kdata <- ctnorm
+n.lev <- 15  #set max value for number of clusters k
+
+# Calculate the within groups sum of squared error (SSE) for the number of cluster solutions selected by the user
+wss <- rnorm(10)
+while (prod(wss==sort(wss,decreasing=T))==0) {
+  wss <- (nrow(kdata)-1)*sum(apply(kdata,2,var))
+  for (i in 2:n.lev) wss[i] <- sum(kmeans(kdata, centers=i)$withinss)}
+
+# Calculate the within groups SSE for 250 randomized data sets (based on the original input data)
+k.rand <- function(x){
+  km.rand <- matrix(sample(x),dim(x)[1],dim(x)[2])
+  rand.wss <- as.matrix(dim(x)[1]-1)*sum(apply(km.rand,2,var))
+  for (i in 2:n.lev) rand.wss[i] <- sum(kmeans(km.rand, centers=i)$withinss)
+  rand.wss <- as.matrix(rand.wss)
+  return(rand.wss)
+}
+
+rand.mat <- matrix(0,n.lev,250)
+
+k.1 <- function(x) { 
+  for (i in 1:250) {
+    r.mat <- as.matrix(suppressWarnings(k.rand(kdata)))
+    rand.mat[,i] <- r.mat}
+  return(rand.mat)
+}
+
+# Same function as above for data with < 3 column variables
+k.2.rand <- function(x){
+  rand.mat <- matrix(0,n.lev,250)
+  km.rand <- matrix(sample(x),dim(x)[1],dim(x)[2])
+  rand.wss <- as.matrix(dim(x)[1]-1)*sum(apply(km.rand,2,var))
+  for (i in 2:n.lev) rand.wss[i] <- sum(kmeans(km.rand, centers=i)$withinss)
+  rand.wss <- as.matrix(rand.wss)
+  return(rand.wss)
+}
+
+k.2 <- function(x){
+  for (i in 1:250) {
+    r.1 <- k.2.rand(kdata)
+    rand.mat[,i] <- r.1}
+  return(rand.mat)
+}
+
+# Determine if the data data table has > or < 3 variables and call appropriate function above
+if (dim(kdata)[2] == 2) { rand.mat <- k.2(kdata) } else { rand.mat <- k.1(kdata) }
+
+# Plot within groups SSE against all tested cluster solutions for actual and randomized data - 1st: Log scale, 2nd: Normal scale
+
+xrange <- range(1:n.lev)
+yrange <- range(log(rand.mat),log(wss))
+plot(xrange,yrange, type='n', xlab='Cluster Solution', ylab='Log of Within Group SSE', main='Cluster Solutions against Log of SSE')
+for (i in 1:250) lines(log(rand.mat[,i]),type='l',col='red')
+lines(log(wss), type="b", col='blue')
+legend('topright',c('Actual Data', '250 Random Runs'), col=c('blue', 'red'), lty=1)
+
+yrange <- range(rand.mat,wss)
+plot(xrange,yrange, type='n', xlab="Cluster Solution", ylab="Within Groups SSE", main="Cluster Solutions against SSE")
+for (i in 1:250) lines(rand.mat[,i],type='l',col='red')
+lines(1:n.lev, wss, type="b", col='blue')
+legend('topright',c('Actual Data', '250 Random Runs'), col=c('blue', 'red'), lty=1)
+
+# Calculate the mean and standard deviation of difference between SSE of actual data and SSE of 250 randomized datasets
+r.sse <- matrix(0,dim(rand.mat)[1],dim(rand.mat)[2])
+wss.1 <- as.matrix(wss)
+for (i in 1:dim(r.sse)[2]) {
+  r.temp <- abs(rand.mat[,i]-wss.1[,1])
+  r.sse[,i] <- r.temp}
+r.sse.m <- apply(r.sse,1,mean)
+r.sse.sd <- apply(r.sse,1,sd)
+r.sse.plus <- r.sse.m + r.sse.sd
+r.sse.min <- r.sse.m - r.sse.sd
+
+# Plot differeince between actual SSE mean SSE from 250 randomized datasets - 1st: Log scale, 2nd: Normal scale 
+
+xrange <- range(1:n.lev)
+yrange <- range(log(r.sse.plus),log(r.sse.min))
+plot(xrange,yrange, type='n',xlab='Cluster Solution', ylab='Log of SSE - Random SSE', main='Cluster Solustions against (Log of SSE - Random SSE)')
+lines(log(r.sse.m), type="b", col='blue')
+lines(log(r.sse.plus), type='l', col='red')
+lines(log(r.sse.min), type='l', col='red')
+legend('topright',c('SSE - random SSE', 'SD of SSE-random SSE'), col=c('blue', 'red'), lty=1)
+
+xrange <- range(1:n.lev)
+yrange <- range(r.sse.plus,r.sse.min)
+plot(xrange,yrange, type='n',xlab='Cluster Solution', ylab='SSE - Random SSE', main='Cluster Solutions against (SSE - Random SSE)')
+lines(r.sse.m, type="b", col='blue')
+lines(r.sse.plus, type='l', col='red')
+lines(r.sse.min, type='l', col='red')
+legend('topright',c('SSE - random SSE', 'SD of SSE-random SSE'), col=c('blue', 'red'), lty=1)
+```
+
+The first plot (i.e., the log of within group sum of squared errors) suggests that there is less change after 4-7 clusters. 
+
+The second plot (i.e., original scale of within group sum of squared errors) also indicates that 4 clusters is optimal.
+
+The third plot (i.e., the standard deviation of the difference between log SSE and random SSE) suggests that 2 clusters is probably optimal (it stabilizes roughtly at 2).
+
+The fourth plot (i.e., the standard deviation of the difference between SSE and random SSE) suggests that 2 or 5 clusters are optimal. 
+
+Now, let's take a look at our K-means results in principal components space (with 4 clusters). 
+
+```{r}
+# Ask for user input - Select the appropriate number of clusters
+#choose.clust <- function(){readline("What clustering solution would you like to use? ")} 
+#clust.level <- as.integer(choose.clust())
+clust.level <- 4
+
+# Apply K-means cluster solutions - append clusters to CSV file
+fit <- kmeans(kdata, clust.level)
+aggregate(kdata, by=list(fit$cluster), FUN=mean)
+
+clust.out <- fit$cluster
+kclust <- as.matrix(clust.out)
+kclust.out <- cbind(kclust, ctnorm)
+write.table(kclust.out, file="kmeans_out.csv", sep=",")
+
+# Display Principal Components plot of data with clusters identified
+
+clusplot(kdata, fit$cluster, shade=F, labels=2, lines=0, color=T, lty=4, main='Principal Components plot showing K-means clusters')
+```
+
+```{r}
+#Make plot of four cluster solution in space desginated by first two
+#  two discriminant functions
+
+plotcluster(kdata, fit$cluster, main="Five Cluster Solution in DA Space",
+            xlab="First Discriminant Function", ylab="Second Discriminant Function")
+```
+
+
 
 # 5 Comment on the number of groups that seem to be present based on what you find above.
 

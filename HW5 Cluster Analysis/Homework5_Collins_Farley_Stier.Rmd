@@ -11,7 +11,7 @@ output:
     latex_engine : xelatex
 ---
 
-```{r, echo=F, message=F, warning=F}
+```{r, echo=F, message=F, warning=F, cache=T}
 # clear env
 rm(list=ls())
 
@@ -23,7 +23,7 @@ library(biotools)
 library(DiscriMiner)
 library(klaR)
 library(vegan)
-library(aplpack)
+#library(aplpack)
 library(fpc)
 library(cluster)
 library(ape)
@@ -373,8 +373,58 @@ plotcluster(kdata, fit$cluster, main="Five Cluster Solution in DA Space",
             xlab="First Discriminant Function", ylab="Second Discriminant Function")
 ```
 
+Based on visual inspection, we note that k-means clustering results in a similar grouping result as observed in Part 3.
 
+Let's try it with 2 clusters:
+
+```{r}
+# Ask for user input - Select the appropriate number of clusters
+#choose.clust <- function(){readline("What clustering solution would you like to use? ")} 
+#clust.level <- as.integer(choose.clust())
+clust.level <- 2
+
+# Apply K-means cluster solutions - append clusters to CSV file
+fit <- kmeans(kdata, clust.level)
+aggregate(kdata, by=list(fit$cluster), FUN=mean)
+
+clust.out <- fit$cluster
+kclust <- as.matrix(clust.out)
+kclust.out <- cbind(kclust, ctnorm)
+write.table(kclust.out, file="kmeans_out2.csv", sep=",")
+
+# Display Principal Components plot of data with clusters identified
+
+clusplot(kdata, fit$cluster, shade=F, labels=2, lines=0, color=T, lty=4, main='Principal Components plot showing K-means clusters')
+```
+
+```{r}
+#Make plot of four cluster solution in space desginated by first two
+#  two discriminant functions
+
+plotcluster(kdata, fit$cluster, main="Five Cluster Solution in DA Space",
+            xlab="First Discriminant Function", ylab="Second Discriminant Function")
+```
 
 # 5 Comment on the number of groups that seem to be present based on what you find above.
 
+Recall that we are clustering U.S. counties based on 3 metric, standardized variables: the percentage of confirmed COVID-19 cases relative to the county population (from February 2021), the log of the median income (from 2019), and the log of the percentage of people of all ages in poverty (from 2019). We are trying to find groups of counties with members that are similar to each other but different from other groups - we are finding clusters of *observations*, like PCA where we found clusters of *variables.*
+
+From our work with hierarchial cluster analysis in Part 2, there appear to be 4 or 5 groups of counties (using Euclidean distance, with 4 groups from Ward agglomeration and 5 groups from complete linkage). To make the dataset more manageable, we zoom in on our favorite state Florida and focus on clustering only Florida's counties from here on.
+
+Our analysis indicates that either 2 clusters or 4 clusters would be appropriate for the Florida counties.
+
+The evidence in support of 2 clusters: R-squared, semi-partial R-squared, the standard deviation of the difference between log SSE and random SSE, the standard deviation of the difference between SSE and random SSE
+
+The evidence in support of 4 clusters: Euclidean/Ward, root mean squared standard deviation (RMSSTD), log of within group sum of squared errors, original scale of within group sum of squared errors
+
+There are 4 points in evidence in support of either 2 clusters or 4 clusters. Both can be justified using statistical techniques, so we will look at what makes sense from an interpretation perspective below. Ultimately, 4 clusters is what makes most sense to us. 
+
 # 6 Write a few sentences describing your final groups.
+
+With 2 clusters, we get Cluster 1 with high COVID-19 percentages, low income, and high poverty; and Cluster 2 with low COVID-19 percentages, high income, and low poverty. These clusters are opposites in every way. There are equal amounts of counties in both groups.
+
+With 4 clusters, we get Cluster 1 with low COVID-19 percentages, high income, and low poverty; Cluster 2 with high COVID-19 percentages, low income, and high poverty; Cluster 3 with low COVID-19 percentages, low income, and high poverty; and Cluster 4 with low COVID-19 percentages, high income, and low poverty. In short, Cluster 1 and Cluster 4 are healthy and wealthy. Cluster 2 is impoverished and experiencing high rates of COVID-19; Cluster 3 is impoverished and experiencing low rates of COVID-19. We note that Cluster 2 seems to have more urban character, while Cluster 3 has more rural character.
+
+Ultimately, we chose 4 clusters to describe how COVID-19 has spread through communities with different incomes and poverty levels. The story told here mimics the one we have been hearing over and over in the news. Poorer urban communities are being hit hardest by COVID-19. Members of these communities tend to have jobs as essential workers that require work outside of the home. They may have to take public transit. They may be unable to afford grocery delivery services. Affluent communities have the resources to avoid COVID-19 transmission, while impoverished communities may not. We find it of note that our 4 cluster model further distinguishes between impoverished urban and impoverished rural areas - though their incomes may be similar, a city grocery store cashier likely has more work-related exposure to COVID-19 than a rural area farmer. Poor urban communities are particularly vulnerable to COVID-19 transmission.
+
+We also note that these same communities are particularly vulnerable to severe COVID-19. They are likely to have preexisting conditions that worsen its effects and may lack quality healthcare or health insurance. As we continue to distribute COVID-19 vaccinations, special attention should be placed on supporting these communities most at risk for COVID-19.

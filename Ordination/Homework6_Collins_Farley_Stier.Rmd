@@ -11,7 +11,7 @@ output:
     latex_engine : xelatex
 ---
 
-```{r, echo=F, message=F, warning=F, cache=T}
+```{r, message=F, warning=F}
 # clear env
 rm(list=ls())
 
@@ -21,7 +21,6 @@ library(tidyverse)
 library(MASS)
 library(DiscriMiner)
 library(klaR)
-library(vegan)
 #library(aplpack)
 library(fpc)
 library(cluster)
@@ -52,12 +51,11 @@ COVID-19 infection and death statistics from U.S. counties (sourced from NYT), c
 
 *Data of relevance for this pset:*
 
-Counties are grouped by `Rural_Urban_Code_2013`. The USDA rural-urban Codes are numbered 1-9 with 1 being the most urban and 9 being the most rural. The counties were aggregated by rural-urban code, and mean values were taken for each of the continuous variables.
+This pset only explores the 67 counties in the best state, Florida.
 
-We look at five continuous variables describing each rural-urban county code: `Never_Wear_Mask_Survey`, `Rarely_Wear_Mask_Survey`, `Sometimes_Wear_Mask_Survey`, `Frequently_Wear_Mask_Survey`, `Always_Wear_Mask_Survey`. These variables reflect the fraction of people in the county who responded as such to a NYT survey inquiring about mask usage. This dat is stored in `data_ord_survey`.
+We look at five continuous variables describing each county: `Always_Wear_Mask_Survey`, `Median_Household_Income_Percent_of_State_Total_2019`, `Percent_Poverty_2019`, `Percent_Adults_Less_Than_HS`, and `Covid_Confirmed_Cases_as_pct`. Note that `Always_Wear_Mask_Survey` and `Covid_Confirmed_Cases_as_pct` were multiplied by 100 to convert the value from a fraction to percent value (like the other variables). This data is stored in `data_ord_base`.
 
-For additional continuous variables, we look at eight continuous variables describing each rural-urban type: `Covid_Deaths_as_pct`, `Unemployment_Rate_2019`, `logMedian_Household_Income_2019`, `Death_Rate_2019`, `Birth_Rate_2019`, `Percent_Poverty_2019`, and `Percent_Adults_Less_Than_HS`, `Percent_Adults_Bachelors_or_Higher`. Note that the first two columns, `FIPS` and `County_Name` are included for documentation purposes. This data is stored in `data_ord_env`.
-
+For additional continuous variables, we make an environmental dataset. We look at five additional continuous variables describing each county: `Unemployment_Rate_2019`, `Death_Rate_2019`, `Birth_Rate_2019`, `Civilian_Labor_Force_2019_as_pct`, `Percent_Adults_Bachelors_or_Higher`. Note that `Civilian_Labor_Force_2019_as_pct` was multiplied by 100 to convert the value from a fraction to percent value (like the other variables). This data is stored in `data_ord_env`.
 
 
 ```{r}
@@ -66,19 +64,6 @@ For additional continuous variables, we look at eight continuous variables descr
 raw <- read.csv("https://evancollins.com/covid_and_demographics.csv")
 
 # create categorical variables: rural-urban code (3 levels), region (4 variables)
-raw <- 
-  raw %>%
-    mutate(region = case_when(
-      State_Name %in% c("Washington", "Oregon", "California", "Nevada", "Idaho", "Montana", "Utah", "Arizona", "Wyoming", "Colorado", "New Mexico", "Alaska", "Hawaii") ~ "West",
-      State_Name %in% c("North Dakota", "South Dakota", "Nebraska", "Kansas", "Minnesota", "Iowa", "Missouri", "Wisconsin", "Illinois", "Michigan", "Indiana", "Ohio") ~ "Midwest",
-      State_Name %in% c("Texas", "Oklahoma", "Arkansas", "Louisiana", "Mississippi", "Tennessee", "Kentucky", "Alabama", "Georgia", "Florida", "South Carolina", "North Carolina", "Virginia", "West Virginia", "District of Columbia", "Delaware", "Maryland") ~ "South",
-      State_Name %in% c("Pennsylvania", "New Jersey", "Connecticut", "Rhode Island", "Massachusetts", "New Hampshire", "Vermont", "Maine", "New York") ~ "Northeast"),
-      rural_urban_code = case_when(
-        Rural_Urban_Code_2013 %in% c(1, 2) ~ "Urban",
-        Rural_Urban_Code_2013 %in% c(3, 4, 5) ~ "Suburban",
-        Rural_Urban_Code_2013 %in% c(6, 7, 8, 9) ~ "Rural")
-      )
-raw$rural_urban_code <- as.factor(raw$rural_urban_code) # Rural is reference
 
 # log transformations of our continuous variables
 raw$logMedian_Household_Income_2019 <- log(raw$Median_Household_Income_2019 + 0.0001)
@@ -87,54 +72,57 @@ raw$logCovid_Confirmed_Cases_as_pct <- log(raw$Covid_Confirmed_Cases_as_pct + 0.
 ```
 
 ```{r}
-# Dataset of interest for this pset
-data_ord <- raw[, c(20, 5, 6, 7, 8, 9)]
+# Base dataset of interest for this pset - data_ord_base
+data_ord <- raw[raw$State_Name=="Florida", ]
+data_ord <- data_ord[, c(2, 9, 12, 13, 14, 22)]
 
-# get averages of each variable by rural-urban code
-data_ord_survey <- aggregate(Never_Wear_Mask_Survey ~ Rural_Urban_Code_2013, data_ord, mean)
-data_ord_survey$Rarely_Wear_Mask_Survey <- aggregate(Rarely_Wear_Mask_Survey ~ Rural_Urban_Code_2013, data_ord, mean)$Rarely_Wear_Mask_Survey
-data_ord_survey$Sometimes_Wear_Mask_Survey <- aggregate(Sometimes_Wear_Mask_Survey ~ Rural_Urban_Code_2013, data_ord, mean)$Sometimes_Wear_Mask_Survey
-data_ord_survey$Frequently_Wear_Mask_Survey <- aggregate(Frequently_Wear_Mask_Survey ~ Rural_Urban_Code_2013, data_ord, mean)$Frequently_Wear_Mask_Survey
-data_ord_survey$Always_Wear_Mask_Survey <- aggregate(Always_Wear_Mask_Survey ~ Rural_Urban_Code_2013, data_ord, mean)$Always_Wear_Mask_Survey
+data_ord_base <- data_ord
+data_ord_base$Covid_Confirmed_Cases_as_pct <- 100*data_ord_base$Covid_Confirmed_Cases_as_pct
+data_ord_base$Always_Wear_Mask_Survey <- 100*data_ord_base$Always_Wear_Mask_Survey
 
-data_ord_survey1 <- data_ord_survey
-data_ord_survey <- data_ord_survey1[,-1]
-rownames(data_ord_survey) <- data_ord_survey1[,1]
+data_ord_base1 <- data_ord_base
+data_ord_base <- data_ord_base1[,-1]
+rownames(data_ord_base) <- data_ord_base1[,1] # rownames are county names
 
+dim(data_ord_base)
+head(data_ord_base)
+plot(data_ord_base)
 ```
 
-```{r}
-# Enviromental variables dataset 
-data_ord_env_county <- raw[, c(20, 23, 10, 28, 18, 19, 13, 14, 15)]
+inertia is like variance but for a two way variable; inertia is sum of eigenvalues (look at proportion explained to see how much is explained in first direction, etc./ cumulative, after third, 98% of degradation etc. )
 
-data_ord_env <- aggregate(Covid_Deaths_as_pct ~ Rural_Urban_Code_2013, data_ord_env_county, mean)
-data_ord_env$Unemployment_Rate_2019 <- aggregate(Unemployment_Rate_2019 ~ Rural_Urban_Code_2013, data_ord_env_county, mean)$Unemployment_Rate_2019
-data_ord_env$logMedian_Household_Income_2019 <- aggregate(logMedian_Household_Income_2019 ~ Rural_Urban_Code_2013, data_ord_env_county, mean)$logMedian_Household_Income_2019
-data_ord_env$Death_Rate_2019 <- aggregate(Death_Rate_2019 ~ Rural_Urban_Code_2013, data_ord_env_county, mean)$Death_Rate_2019
-data_ord_env$Birth_Rate_2019 <- aggregate(Birth_Rate_2019 ~ Rural_Urban_Code_2013, data_ord_env_county, mean)$Birth_Rate_2019
-data_ord_env$Percent_Poverty_2019 <- aggregate(Percent_Poverty_2019 ~ Rural_Urban_Code_2013, data_ord_env_county, mean)$Percent_Poverty_2019
-data_ord_env$Percent_Adults_Less_Than_HS <- aggregate(Percent_Adults_Less_Than_HS ~ Rural_Urban_Code_2013, data_ord_env_county, mean)$Percent_Adults_Less_Than_HS
-data_ord_env$Percent_Adults_Bachelors_or_Higher <- aggregate(Percent_Adults_Bachelors_or_Higher ~ Rural_Urban_Code_2013, data_ord_env_county, mean)$Percent_Adults_Bachelors_or_Higher
+```{r}
+# Enviromental variables dataset - data_ord_env
+data_ord_env_county <- raw[raw$State_Name=="Florida", ]
+data_ord_env_county <- data_ord_env_county[, c(2, 10, 18, 19, 25, 15)]
+
+data_ord_env <- data_ord_env_county
+data_ord_env$Civilian_Labor_Force_2019_as_pct <- 100*data_ord_env$Civilian_Labor_Force_2019_as_pct
 
 data_ord_env1 <- data_ord_env
 data_ord_env <- data_ord_env1[,-1]
-rownames(data_ord_env) <- data_ord_env1[,1]
+rownames(data_ord_env) <- data_ord_env1[,1] # rownames are county names
 
+dim(data_ord_env)
+head(data_ord_env)
 ```
+
 
 
 # 1 
 
 **Fit Correspondence Analysis to your data.**
 
-Columns 2 through 6 contain the variable data. Correspondence analysis is performed using the `cca()` function.
+All columns of `data_ord_base` contains the variable data. Correspondence analysis is performed using the `cca()` function.
 
 ```{r}
 # No negative data anyways
-# data_ord_survey <- data_ord_survey[apply(data_ord_survey[, 2:6], 1, sum) > 0, ]
+# data_ord_base <- data_ord_base[apply(data_ord_base, 1, sum) > 0, ]
 
 #Perform correspondence analysis
-data_ord_survey_ca <- cca(data_ord_survey)
+data_ord_base_ca <- cca(data_ord_base)
+
+# inertia is measure of departure from ind model; if no relationships from rows and columns; in this case, household income, percent poverty are related; other variables are not so strongly related; if inertia smaller - less structure to data in 5-D 
 ```
 
 
@@ -144,32 +132,31 @@ data_ord_survey_ca <- cca(data_ord_survey)
 
 
 ```{r}
-#plot results
-plot(data_ord_survey_ca, main = "Correspondence Analysis for Rural-Urban Data", type = "n")
-text(data_ord_survey_ca, dis = "wa", labels = rownames(data_ord_survey))
-points(data_ord_survey_ca, pch = 21, col = "red", bg = "yellow", cex = 1.2)
-text(data_ord_survey_ca, "species", col = "blue", cex = 0.8)
+summary(data_ord_base_ca)
 ```
 
 
-ISSUE IN CHUNK BELOW: WHY IS THERE NO "CONSTRAINED" FEEATURED, SO PROPORTION IS STRANGELY 1???
-THIS WAS NOT THE CASE IN THE EXAMPLE R CODE. 
+Inertia (equal to squared eigenvalues) is like variance and measures departures from the independence model. We see that the inertia value is 0.05033. The magnitude of inertia does not reflect more or less variance per se; it is reflective of the magnitude of the data. (Note that multiplying fractions by 100 to make values as percents did not increase this inertia magnitude).
 
-I THINK THIS PROBLEM MAYBE RELATED TO BASIC DATA ORGANIZATION?
+In the "Proportion Explained" row, we can see that first CA direction explains 0.71649 (~72%) of the relation. The "Cumulative Proportion" by the second CA direction is 0.914297; hence, the first and second CA directions explain the vast majority of total inertia. The third and fourth CA directions have significantly smaller "Proportion Explained" values
 
 ```{r}
-summary(data_ord_survey_ca)
+#plot results
+plot(data_ord_base_ca, main = "Correspondence Analysis for FL Counties", type = "n")
+text(data_ord_base_ca, dis = "wa", labels = rownames(data_ord_base))
+points(data_ord_base_ca, pch = 21, col = "red", bg = "yellow", cex = 1.2)
+text(data_ord_base_ca, "species", col = "blue", cex = 0.8)
 ```
 
 
 Add environmental variables.
 
 ```{r}
-plot(data_ord_survey_ca, main = "Correspondence Analysis for Rural-Urban Data", type = "n")
-points(data_ord_survey_ca, pch = 19, col = "black", cex = 1)
-text(data_ord_survey_ca, "species", col = "blue", cex = 1.1)
+plot(data_ord_base_ca, main = "Correspondence Analysis for FL Counties", type = "n")
+points(data_ord_base_ca, pch = 19, col = "black", cex = 1)
+text(data_ord_base_ca, "species", col = "blue", cex = 1.1)
 #add environmental variables
-fit <- envfit(data_ord_survey_ca, data_ord_env, permutations = 1000)
+fit <- envfit(data_ord_base_ca, data_ord_env, permutations = 1000)
 plot(fit, col = "red", lwd = 3)
 ```
 
@@ -178,25 +165,26 @@ plot(fit, col = "red", lwd = 3)
 fit
 ```
 
-We can see that all environmental variables are significant (p < 0.1) except `Birth_Rate_2019`. We will omit this variable from the environmental variable dataset for future analyses.
+We can see that all environmental variables are significant (p < 0.05) except `Birth_Rate_2019` and `Death_Rate_2019`. We will omit these variables from the environmental variable dataset for future analyses.
 
 ```{r}
-data_ord_env <- subset(data_ord_env, select=-6)
+data_ord_env <- subset(data_ord_env, select=-2)
+data_ord_env <- subset(data_ord_env, select=-2)
 ```
 
 
-This plot is somewhat hard to read (and may have a rudimentary arch), so we try detrended correspondence analysis. This is even harder to read. DCA uses the `decorana()` function.
+This plot is somewhat hard to read, so we try detrended correspondence analysis. This is even harder to read. DCA uses the `decorana()` function.
 
 ```{r}
 #detrended correspondence analysis
-data_ord_survey_dca <- decorana(data_ord_survey)
-plot(data_ord_survey_dca, main = "DCA for Rural-Urban Type", type = "n")
-text(data_ord_survey_dca, display = c("sites"), labels = rownames(data_ord_survey), cex = 0.86)
-points(data_ord_survey_dca, pch = 21, col = "red", bg = "yellow", cex = 0.6)
-text(data_ord_survey_dca, "species", col = "blue", cex = 0.6)
+data_ord_base_dca <- decorana(data_ord_base)
+plot(data_ord_base_dca, main = "DCA for Rural-Urban Type", type = "n")
+text(data_ord_base_dca, display = c("sites"), labels = rownames(data_ord_base), cex = 0.86)
+points(data_ord_base_dca, pch = 21, col = "red", bg = "yellow", cex = 0.6)
+text(data_ord_base_dca, "species", col = "blue", cex = 0.6)
 
 #add environmental variables
-fit <- envfit(data_ord_survey_dca, data_ord_env, permutations = 1000)
+fit <- envfit(data_ord_base_dca, data_ord_env, permutations = 1000)
 plot(fit, col = "red", lwd = 3)
 ```
 
@@ -218,20 +206,20 @@ plot(fit, col = "red", lwd = 3)
 
 **Perform Multidimensional Scaling (metric or non-metric) for 1, 2, and 3 dimensions.**
 
-*first attempt - problematic because stresses are too low* (need to change)
-
-```{r}
+```{r, results="hide", warning=F, message=F}
 results <- matrix(NA, 21, 5)
 #j is number of dimensions to try
 for (j in 1:5){
   for (i in 1:20){
-    temp <- data_ord_survey[shuffle(nrow(data_ord_survey)), 1]
-    for (k in 2:6) { temp <- cbind(temp, data_ord_survey[shuffle(nrow(data_ord_survey)), k]) }
+    temp <- data_ord_base[shuffle(nrow(data_ord_base)), 1]
+    for (k in 2:12) { temp <- cbind(temp, data_ord_base[shuffle(nrow(data_ord_base)), k]) }
     #store stress
     results[i, j] <- metaMDS(temp, k = j, distance = "euclidean")$stress
   }
-  results[21, j] <- metaMDS(data_ord_survey, k = j, distance = "euclidean")$stress
+  results[21, j] <- metaMDS(data_ord_base, k = j, distance = "euclidean")$stress
 }
+
+# Note: results are hidden (too long)
 ```
 
 ```{r}
@@ -239,7 +227,7 @@ for (j in 1:5){
 
 plot(c(1:5), results[21, ], type = "b", col = "blue", lwd = 3, 
      ylim = c(0, max(results)), xlab = "Dimensions", ylab = "Stress", pch = 19, 
-     main = "MDS for Stream Data, Euclidean Distance")
+     main = "MDS for Rural-Urban Data, Euclidean Distance")
 mins <- apply(results[1:20, ], 2, min)
 maxs <- apply(results[1:20, ], 2, max)
 meds <- apply(results[1:20, ], 2, median)
@@ -250,7 +238,9 @@ for (i in 1:5){
 legend(3.5, (.9*max(results)), c("MDS Solution", "20 Permutations"), lwd = 3, col = c("blue", "red"))
 ```
 
+After performing multidimensional scaling for 1-5 dimensions, the above scree plot for stress illustrates an elbow at 2 dimensions.
 
+*Probably can add more explanation here*
 
 
 
@@ -262,6 +252,29 @@ legend(3.5, (.9*max(results)), c("MDS Solution", "20 Permutations"), lwd = 3, co
 # 7
 
 **Make a two dimensional plot of your MDS results.**
+
+```{r}
+data_ord_base.mds2 <- metaMDS(data_ord_base, k = 2, distance = "euclidean")
+plot(data_ord_base.mds2, type = "t")
+```
+
+```{r}
+#more refined plot
+fig <- ordiplot(data_ord_base.mds2, type = "none", cex = 1.1)
+text(fig, "species", col = "red", cex = 1.1)
+text(fig, "sites", col = "blue", cex = 0.8)
+```
+
+We can also add environmental variables to our plot.
+
+```{r}
+fig <- ordiplot(data_ord_base.mds2, type = "none", cex = 1.1)
+text(fig, "species", col = "red", cex = 1.1)
+text(fig, "sites", col = "blue", cex = 0.8)
+
+fit <- envfit(data_ord_base.mds2, data_ord_env, permutations = 1000)
+plot(fit, col = "black", lwd = 3)
+```
 
 
 # 8

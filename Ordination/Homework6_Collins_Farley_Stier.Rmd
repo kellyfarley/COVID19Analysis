@@ -29,9 +29,9 @@ library(amap)
 
 # Packages pertinent to Ordination
 library(vegan) # eggplant
-library(vegan3d)
+#library(vegan3d)
 library(mgcv)
-library(rgl)
+#library(rgl)
 library(dplyr)
 library(magrittr)
 ```
@@ -195,12 +195,20 @@ plot(fit, col = "red", lwd = 3)
 
 **Comment on whether or not there is any evidence of 'data snaking' in higher dimensional space.**
 
+```{r}
+pc1 <- princomp(data_ord_env, cor=TRUE)
 
+source("http://reuningscherer.net/multivariate/r/ciscoreplot.R.txt")
+ciscoreplot(pc1,c(1,2),data_ord_env[,1])
+```
+
+There is no evidence of data snaking in higher dimensional space. Evidence of snaking would be a PCA score plot that looks like a horseshoe. However, the above scoreplot appears random and therefore does not indicate data snaking.
 
 # 4
 
 **In a few sentences, describe what you conclude from your plot.**
 
+From ou first plot in (2) of the first two CA directions, we should be able to find which counties are similar and what are the columns on which they are similar. Overall, the counties seem evenly and randomly scattered between the 4 quadrants- we do not note rows near columns, so there is not association not accounted for by the independence model. Generally, the first correspondence axis is associated with low income and low education and high COVID-19 rates, while the second correspondence axis is associated primarily with  poor msasking behaviors and high COVID-19 rates, perhaps indicating two different types of counties that are associated with high COVID-19 rates (those in poorer, disavantaged areas and also those with poor masking behaviors). As one may expect, the percent poverty and percent of adults with less than a high school degree point in the same direction, while the median household income points in the opposite direction.
 
 # 5
 
@@ -222,6 +230,12 @@ for (j in 1:5){
 # Note: results are hidden (too long)
 ```
 
+
+
+# 6
+
+**Discuss the stress (or SStress) of each dimensional solution. Make a scree plot if you're able.**
+
 ```{r}
 #plot stress results
 
@@ -238,16 +252,9 @@ for (i in 1:5){
 legend(3.5, (.9*max(results)), c("MDS Solution", "20 Permutations"), lwd = 3, col = c("blue", "red"))
 ```
 
-After performing multidimensional scaling for 1-5 dimensions, the above scree plot for stress illustrates an elbow at 2 dimensions.
+After performing multidimensional scaling for 1-5 dimensions, the above scree plot for stress illustrates an elbow at 2 dimensions. This stress level is below 10% and indicates a good fit. For 3 dimensions, the stress is below 5% and indicates an excellent fit.
 
-*Probably can add more explanation here*
-
-
-
-# 6
-
-**Discuss the stress (or SStress) of each dimensional solution. Make a scree plot if you're able.**
-
+Stress is a measure of the difference between acutal pairwise distances and calculated reference distances; a lower stress indicates a better fit. As the dimensions exceeds that of the data (for 4 and 5 dimensions), the stress goes to 0.
 
 # 7
 
@@ -265,6 +272,10 @@ text(fig, "species", col = "red", cex = 1.1)
 text(fig, "sites", col = "blue", cex = 0.8)
 ```
 
+# 8
+
+**If possible, overlay some other continuous variable(s) to interpret your ordination axes. Calculate p-values for the overlaid additional variable(s). If you can, get some non-linear wireplots of the these overlaid variables (see examples online in R).**
+
 We can also add environmental variables to our plot.
 
 ```{r}
@@ -276,20 +287,31 @@ fit <- envfit(data_ord_base.mds2, data_ord_env, permutations = 1000)
 plot(fit, col = "black", lwd = 3)
 ```
 
+```{r}
+fit <- envfit(data_ord_base_ca, data_ord_env, permutations = 1000)
+fit
+```
 
-# 8
+The three overlaid continuous variables above are all significant with p<0.05.
 
-**If possible, overlay some other continuous variable(s) to interpret your ordination axes. Calculate p-values for the overlaid additional variable(s). If you can, get some non-linear wireplots of the these overlaid variables (see examples online in R).**
+```{r}
+mds4 <- metaMDS(data_ord_env, distance="euclidean", k=4)
+fig <- ordiplot(mds4, type = "none", cex = 1.1, main = "NMDS for COVID-19 Data")
+text(fig, "species", col = "red", cex = 0.7)
+text(fig, "sites", col = "black", cex = 0.7)
+plot(fit)
+tmp1 <- with(data_ord_env, ordisurf(mds4, Unemployment_Rate_2019, add = TRUE))
+tmp2 <- with(data_ord_env, ordisurf(mds4, Percent_Adults_Bachelors_or_Higher, add = TRUE, col = "green4"))
+tmp3 <- with(data_ord_env, ordisurf(mds4, Civilian_Labor_Force_2019_as_pct, add = TRUE, col = "purple"))
 
-
-
+vis.gam(tmp1, main = "Unemployment Rate")
+vis.gam(tmp2, main = "Percentage of Adults with Bachelor's or Higher")
+vis.gam(tmp3, main = "Civilian Labor Force Percentage")
+```
 
 # 9
 
 **Again, assuming you have at least one additional continuous variable, perform canonical correspondence analysis.**
-
-
-
 
 
 # 10

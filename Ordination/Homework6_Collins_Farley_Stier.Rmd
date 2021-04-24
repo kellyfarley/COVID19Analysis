@@ -208,7 +208,7 @@ There is no evidence of data snaking in higher dimensional space. Evidence of sn
 
 **In a few sentences, describe what you conclude from your plot.**
 
-From ou first plot in (2) of the first two CA directions, we should be able to find which counties are similar and what are the columns on which they are similar. Overall, the counties seem evenly and randomly scattered between the 4 quadrants- we do not note rows near columns, so there is not association not accounted for by the independence model. Generally, the first correspondence axis is associated with low income and low education and high COVID-19 rates, while the second correspondence axis is associated primarily with  poor msasking behaviors and high COVID-19 rates, perhaps indicating two different types of counties that are associated with high COVID-19 rates (those in poorer, disavantaged areas and also those with poor masking behaviors). As one may expect, the percent poverty and percent of adults with less than a high school degree point in the same direction, while the median household income points in the opposite direction.
+From our first plot in (2) of the first two CA directions, we should be able to find which counties are similar and what are the columns on which they are similar. Overall, the counties seem evenly and randomly scattered between the 4 quadrants- we do not note rows near columns, so there is not association not accounted for by the independence model. Generally, the first correspondence axis is associated with low income and low education and high COVID-19 rates, while the second correspondence axis is associated primarily with  poor masking behaviors and high COVID-19 rates, perhaps indicating two different types of counties that are associated with high COVID-19 rates (those in poorer, disadvantaged areas and also those with poor masking behaviors). As one may expect, the percent poverty and percent of adults with less than a high school degree point in the same direction, while the median household income points in the opposite direction.
 
 # 5
 
@@ -254,7 +254,7 @@ legend(3.5, (.9*max(results)), c("MDS Solution", "20 Permutations"), lwd = 3, co
 
 After performing multidimensional scaling for 1-5 dimensions, the above scree plot for stress illustrates an elbow at 2 dimensions. This stress level is below 10% and indicates a good fit. For 3 dimensions, the stress is below 5% and indicates an excellent fit.
 
-Stress is a measure of the difference between acutal pairwise distances and calculated reference distances; a lower stress indicates a better fit. As the dimensions exceeds that of the data (for 4 and 5 dimensions), the stress goes to 0.
+Stress is a measure of the difference between actual pairwise distances and calculated reference distances; a lower stress indicates a better fit. As the dimensions exceeds that of the data (for 4 and 5 dimensions), the stress goes to 0.
 
 # 7
 
@@ -313,11 +313,12 @@ vis.gam(tmp3, main = "Civilian Labor Force Percentage")
 
 **Again, assuming you have at least one additional continuous variable, perform canonical correspondence analysis.**
 
-As directed, here we'll perform CCA both with and without (or the other way around) the environmental variables. 
+As directed, here we'll perform CCA -- both with and without (or the other way around) the environmental variables.
+
 ```{r}
 data_ord_base_cca1 <- cca(data_ord_base, scale="FALSE")
 data_ord_base_cca2 <- cca(data_ord_base, data_ord_env, scale="FALSE")
-plot(data_ord_base_cca2, main="CCA with env")
+plot(data_ord_base_cca1, main="CCA without env")
 plot(data_ord_base_cca2, main="CCA with env")
 
 #plot(data_ord_base_cca, main = "CCA for Rural-Urban Type", type = "n")
@@ -331,11 +332,10 @@ plot(fit_cca, col = "red", lwd = 3)
 summary(data_ord_base_cca2)
 ```
 
-The three overlaid continuous variables above are all significant with p<0.001.
-
+The three overlaid continuous variables above are all significant with p<0.001. However, the continuous variables don't have a great distribution on this plot, so the discriminating ability is probably not as helpful as what we might like.
 
 # 10
 
 **Finally, write a paragraph or so comparing the methods you’ve used, discuss what conclusions you reach, etc.**
 
-
+The counties are well distributed across the quadrants in each of our CCA methods, and we find significance in three of our environmental variables. MDS substantially reduces the stress in the model, and increases the distribution and therefore discriminating utility of the continuous variables. We find some associations between low income/education rates and COVID-19 impact indicators, which is an entirely unsurprising and telling trend. MDS doesn't do much to separate the education and labor force metrics, but `envfit` helps to separate them. Their proximity makes a lot of sense since one would expect them to trend together and possibly have synergistic value. In CCA, we find substantially more variation on the second CCA axis, which is inversely related to unemployment.

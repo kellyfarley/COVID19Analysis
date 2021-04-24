@@ -313,6 +313,26 @@ vis.gam(tmp3, main = "Civilian Labor Force Percentage")
 
 **Again, assuming you have at least one additional continuous variable, perform canonical correspondence analysis.**
 
+As directed, here we'll perform CCA both with and without (or the other way around) the environmental variables. 
+```{r}
+data_ord_base_cca1 <- cca(data_ord_base, scale="FALSE")
+data_ord_base_cca2 <- cca(data_ord_base, data_ord_env, scale="FALSE")
+plot(data_ord_base_cca2, main="CCA with env")
+plot(data_ord_base_cca2, main="CCA with env")
+
+#plot(data_ord_base_cca, main = "CCA for Rural-Urban Type", type = "n")
+#points(data_ord_base_cca, pch = 19, col = "red", cex = 1)
+#text(data_ord_base_cca, "species", col = "blue", cex = 0.7)
+#text(data_ord_base_cca, display = c("sites"), labels = rownames(data_ord_base), cex = 0.5)
+
+(fit_cca <- envfit(data_ord_base_cca2, data_ord_env, permutations=1000))
+plot(data_ord_base_cca2)
+plot(fit_cca, col = "red", lwd = 3)
+summary(data_ord_base_cca2)
+```
+
+The three overlaid continuous variables above are all significant with p<0.001.
+
 
 # 10
 

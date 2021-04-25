@@ -3,12 +3,12 @@ title: "S&DS 363 Homework 6"
 author: "Evan Collins, Kelly Farley, Ken Stier"
 date: "23 April 2021"
 output:
+  pdf_document:
+    latex_engine : xelatex
   html_document:
    toc: yes
    toc_float:
      collapsed: no
-  pdf_document:
-    latex_engine : xelatex
 ---
 
 ```{r, message=F, warning=F}
@@ -120,7 +120,10 @@ All columns of `data_ord_base` contains the variable data. Correspondence analys
 #Perform correspondence analysis
 data_ord_base_ca <- cca(data_ord_base)
 
-# inertia is measure of departure from ind model; if no relationships from rows and columns; in this case, household income, percent poverty are related; other variables are not so strongly related; if inertia smaller - less structure to data in 5-D 
+# inertia is measure of departure from ind model; if no relationships 
+#from rows and columns; in this case, household income, percent poverty 
+# are related; other variables are not so strongly related; if inertia smaller 
+# - less structure to data in 5-D 
 ```
 
 
@@ -212,7 +215,7 @@ From our first plot in (2) of the first two CA directions, we should be able to 
 
 **Perform Multidimensional Scaling (metric or non-metric) for 1, 2, and 3 dimensions.**
 
-```{r, results="hide", warning=F, message=F}
+```{r, warning=F, message=F}
 results <- matrix(NA, 21, 5)
 #j is number of dimensions to try
 for (j in 1:5){
@@ -297,8 +300,10 @@ text(fig, "species", col = "red", cex = 0.7)
 text(fig, "sites", col = "black", cex = 0.7)
 plot(fit)
 tmp1 <- with(data_ord_env, ordisurf(mds4, Unemployment_Rate_2019, add = TRUE))
-tmp2 <- with(data_ord_env, ordisurf(mds4, Percent_Adults_Bachelors_or_Higher, add = TRUE, col = "green4"))
-tmp3 <- with(data_ord_env, ordisurf(mds4, Civilian_Labor_Force_2019_as_pct, add = TRUE, col = "purple"))
+tmp2 <- with(data_ord_env, ordisurf(mds4, Percent_Adults_Bachelors_or_Higher, 
+                                    add = TRUE, col = "green4"))
+tmp3 <- with(data_ord_env, ordisurf(mds4, Civilian_Labor_Force_2019_as_pct, 
+                                    add = TRUE, col = "purple"))
 
 vis.gam(tmp1, main = "Unemployment Rate")
 vis.gam(tmp2, main = "Percentage of Adults with Bachelor's or Higher")
@@ -335,8 +340,4 @@ The three overlaid continuous variables above are all significant with p<0.001. 
 
 **Finally, write a paragraph or so comparing the methods you’ve used, discuss what conclusions you reach, etc.**
 
-The counties are well distributed across the quadrants in each of our CCA methods, and we find significance in three of our environmental variables. Our two-dimensional MDS results are robust and suggest two dimensions are likely optimal, although three dimensions could also be considered. Our results for canonical correspondence analysis (CCA) are somewhat concentrated and difficult to read. Although our relatively high amount of counties (67) contributes to the difficulty in discerning the plot, the CCA plot is particularly concentrated. We believe the NMDS plot in #8 with contour lines optimally illustrates the distribution of the counties and their relations to the NMDS axes and environmental variables. It conveys a lot of information in a single plot. Moreover, we can see that the contour lines are not exactly perpendicular to their respective blue dimensional axes, suggesting a more complex (non-linear) pattern in the environmental variables.
-
-
-
-. We find some associations between low income/education rates and COVID-19 impact indicators, which is an entirely unsurprising and telling trend. MDS doesn't do much to separate the education and labor force metrics, but `envfit` helps to separate them. Their proximity makes a lot of sense since one would expect them to trend together and possibly have synergistic value. In CCA, we find substantially more variation on the second CCA axis, which is inversely related to unemployment.
+The counties are well distributed across the quadrants in each of our MDS methods, and we find significance in three of our environmental variables. Our two-dimensional MDS results are robust and suggest two dimensions are likely optimal, although three dimensions could also be considered. Our results for canonical correspondence analysis (CCA) are somewhat concentrated and difficult to read. In CCA, we find substantially more variation on the second CCA axis, which is inversely related to unemployment. Although our relatively high amount of counties (67) contributes to the difficulty in discerning the plot, the CCA plot is particularly concentrated. We believe the NMDS plot in #8 with contour lines optimally illustrates the distribution of the counties and their relations to the NMDS axes and environmental variables. It conveys a lot of information in a single plot. Moreover, we can see that the contour lines are not exactly perpendicular to their respective blue dimensional axes, suggesting a more complex (non-linear) significant pattern of counties according to the environmental variables of unemployment, bachelor's percentage, and civilian labor force percentage.

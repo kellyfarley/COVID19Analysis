@@ -89,8 +89,6 @@ head(data_ord_base)
 plot(data_ord_base)
 ```
 
-inertia is like variance but for a two way variable; inertia is sum of eigenvalues (look at proportion explained to see how much is explained in first direction, etc./ cumulative, after third, 98% of degradation etc. )
-
 ```{r}
 # Enviromental variables dataset - data_ord_env
 data_ord_env_county <- raw[raw$State_Name=="Florida", ]
@@ -138,7 +136,7 @@ summary(data_ord_base_ca)
 
 Inertia (equal to squared eigenvalues) is like variance and measures departures from the independence model. We see that the inertia value is 0.05033. The magnitude of inertia does not reflect more or less variance per se; it is reflective of the magnitude of the data. (Note that multiplying fractions by 100 to make values as percents did not increase this inertia magnitude).
 
-In the "Proportion Explained" row, we can see that first CA direction explains 0.71649 (~72%) of the relation. The "Cumulative Proportion" by the second CA direction is 0.914297; hence, the first and second CA directions explain the vast majority of total inertia. The third and fourth CA directions have significantly smaller "Proportion Explained" values
+In the "Proportion Explained" row, we can see that first CA direction explains 0.71649 (~72%) of the relation. The "Cumulative Proportion" by the second CA direction is 0.914297; hence, the first and second CA directions explain the vast majority of total inertia. The third and fourth CA directions have significantly smaller "Proportion Explained" values. This suggests that there are likely two major underlying discriminatory dimensions captured by the data. 
 
 ```{r}
 #plot results
@@ -208,7 +206,7 @@ There is no evidence of data snaking in higher dimensional space. Evidence of sn
 
 **In a few sentences, describe what you conclude from your plot.**
 
-From our first plot in (2) of the first two CA directions, we should be able to find which counties are similar and what are the columns on which they are similar. Overall, the counties seem evenly and randomly scattered between the 4 quadrants- we do not note rows near columns, so there is not association not accounted for by the independence model. Generally, the first correspondence axis is associated with low income and low education and high COVID-19 rates, while the second correspondence axis is associated primarily with  poor masking behaviors and high COVID-19 rates, perhaps indicating two different types of counties that are associated with high COVID-19 rates (those in poorer, disadvantaged areas and also those with poor masking behaviors). As one may expect, the percent poverty and percent of adults with less than a high school degree point in the same direction, while the median household income points in the opposite direction.
+From our first plot in (2) of the first two CA directions, we should be able to find which counties are similar and what are the columns on which they are similar. Overall, the counties seem evenly and randomly scattered between the 4 quadrants- we do not note rows near columns, so there is not association not accounted for by the independence model. Generally, the first correspondence axis is associated with low income and low education and high COVID-19 rates, while the second correspondence axis is associated primarily with poor masking behaviors and high COVID-19 rates, perhaps indicating two different types of counties that are associated with high COVID-19 rates (those in poorer, disadvantaged areas and also those with poor masking behaviors). As one may expect, the percent poverty and percent of adults with less than a high school degree point in the same direction, while the median household income points in the opposite direction.
 
 # 5
 
@@ -252,7 +250,7 @@ for (i in 1:5){
 legend(3.5, (.9*max(results)), c("MDS Solution", "20 Permutations"), lwd = 3, col = c("blue", "red"))
 ```
 
-After performing multidimensional scaling for 1-5 dimensions, the above scree plot for stress illustrates an elbow at 2 dimensions. This stress level is below 10% and indicates a good fit. For 3 dimensions, the stress is below 5% and indicates an excellent fit.
+After performing multidimensional scaling for 1-5 dimensions, the above scree plot for stress illustrates an elbow at 2 dimensions. This stress level is below 10% and indicates a good fit. For 3 dimensions, the stress is below 5% and indicates an excellent fit. After 3 dimensions, random chance could result in comparable stress values. 
 
 Stress is a measure of the difference between actual pairwise distances and calculated reference distances; a lower stress indicates a better fit. As the dimensions exceeds that of the data (for 4 and 5 dimensions), the stress goes to 0.
 
@@ -263,14 +261,12 @@ Stress is a measure of the difference between actual pairwise distances and calc
 ```{r}
 data_ord_base.mds2 <- metaMDS(data_ord_base, k = 2, distance = "euclidean")
 plot(data_ord_base.mds2, type = "t")
+
+stressplot(data_ord_base.mds2)
 ```
 
-```{r}
-#more refined plot
-fig <- ordiplot(data_ord_base.mds2, type = "none", cex = 1.1)
-text(fig, "species", col = "red", cex = 1.1)
-text(fig, "sites", col = "blue", cex = 0.8)
-```
+The R-squared values seem sufficiently high with the two dimensional MDS result. 
+
 
 # 8
 
@@ -292,7 +288,7 @@ fit <- envfit(data_ord_base_ca, data_ord_env, permutations = 1000)
 fit
 ```
 
-The three overlaid continuous variables above are all significant with p<0.05.
+The three overlaid continuous variables above are all significant with p<0.05. This is graphically suggested by the long length of the lines. 
 
 ```{r}
 mds4 <- metaMDS(data_ord_env, distance="euclidean", k=4)
@@ -334,8 +330,13 @@ summary(data_ord_base_cca2)
 
 The three overlaid continuous variables above are all significant with p<0.001. However, the continuous variables don't have a great distribution on this plot, so the discriminating ability is probably not as helpful as what we might like.
 
+
 # 10
 
 **Finally, write a paragraph or so comparing the methods you’ve used, discuss what conclusions you reach, etc.**
 
-The counties are well distributed across the quadrants in each of our CCA methods, and we find significance in three of our environmental variables. MDS substantially reduces the stress in the model, and increases the distribution and therefore discriminating utility of the continuous variables. We find some associations between low income/education rates and COVID-19 impact indicators, which is an entirely unsurprising and telling trend. MDS doesn't do much to separate the education and labor force metrics, but `envfit` helps to separate them. Their proximity makes a lot of sense since one would expect them to trend together and possibly have synergistic value. In CCA, we find substantially more variation on the second CCA axis, which is inversely related to unemployment.
+The counties are well distributed across the quadrants in each of our CCA methods, and we find significance in three of our environmental variables. Our two-dimensional MDS results are robust and suggest two dimensions are likely optimal, although three dimensions could also be considered. Our results for canonical correspondence analysis (CCA) are somewhat concentrated and difficult to read. Although our relatively high amount of counties (67) contributes to the difficulty in discerning the plot, the CCA plot is particularly concentrated. We believe the NMDS plot in #8 with contour lines optimally illustrates the distribution of the counties and their relations to the NMDS axes and environmental variables. It conveys a lot of information in a single plot. Moreover, we can see that the contour lines are not exactly perpendicular to their respective blue dimensional axes, suggesting a more complex (non-linear) pattern in the environmental variables.
+
+
+
+. We find some associations between low income/education rates and COVID-19 impact indicators, which is an entirely unsurprising and telling trend. MDS doesn't do much to separate the education and labor force metrics, but `envfit` helps to separate them. Their proximity makes a lot of sense since one would expect them to trend together and possibly have synergistic value. In CCA, we find substantially more variation on the second CCA axis, which is inversely related to unemployment.

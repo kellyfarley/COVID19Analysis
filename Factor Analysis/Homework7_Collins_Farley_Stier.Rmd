@@ -1,0 +1,121 @@
+---
+title: "S&DS 363 Homework 7"
+author: "Evan Collins, Kelly Farley, Ken Stier"
+date: "28 April 2021"
+output:
+  html_document:
+   toc: yes
+   toc_float:
+     collapsed: no
+  pdf_document:
+    latex_engine : xelatex
+---
+
+```{r, message=F, warning=F}
+# clear env
+rm(list=ls())
+
+# load packages
+library(corrplot)
+library(tidyverse)
+library(rela)
+library(psych)
+```
+
+# Contributors
+
+Evan Collins (evan.collins@yale.edu)
+
+Kelly Farley (kelly.farley@yale.edu)
+
+Ken Stier (ken.stier@yale.edu)
+
+# The Dataset
+
+*Raw dataset:*
+COVID-19 infection and death statistics from U.S. counties (sourced from NYT), combined with economic, education, and population data (sourced from various government agencies) and also survey responses about mask-wearing frequencies (sourced from NYT). 3141 complete observations on 19 metric variables and 6 categorical variables. To avoid any outliers due to population size differences between counties, all variables are scaled as a percentage of population. Variable descriptions can be found [here](http://evancollins.com/variable_descriptions.html). We examine 19 continuous variables, with 3 of them (l)median household income, percent poverty, and percentage of confirmed COVID-19 cases) log transformed das has been indicated in previous psets.
+
+
+```{r}
+# Process raw dataset as we have done in preceding psets
+
+raw <- read.csv("https://evancollins.com/covid_and_demographics.csv")
+
+# create categorical variables: rural-urban code (3 levels), region (4 variables)
+
+# log transformations of our continuous variables
+raw$logMedian_Household_Income_2019 <- log(raw$Median_Household_Income_2019 + 0.0001)
+raw$logPercent_Poverty_2019 <- log(raw$Percent_Poverty_2019 + 0.0001)
+raw$logCovid_Confirmed_Cases_as_pct <- log(raw$Covid_Confirmed_Cases_as_pct + 0.0001)
+
+# only want continuous variabless
+dat <- raw[, c(5:28)]
+# remove untransformed variables and integers
+dat <- dat %>%
+        select(-Covid_Confirmed_Cases_as_pct, -Median_Household_Income_2019, -Percent_Poverty_2019,
+               -Rural_Urban_Code_2013, -Economic_Typology_2015 )
+```
+
+# 1) Look through indicators (questions). Think about which indicators might be related through latent factors. (nothing to turn in here)
+
+# 2) Compute the correlation matrix between all indicators (you may want to do this in batches). Comment on relationships you do/do not observe.
+
+```{r}
+cor(dat)
+
+corrplot.mixed(cor(dat), lower.col = "black", upper = "ellipse", tl.col = "black", number.cex = .3, tl.pos = "lt", tl.cex = .6, p.mat = cor.mtest(dat, conf.level = .95)$p, sig.level = .05)
+```
+
+We observe many weak correlations and a few strong correlations.
+
+The masking survey responses are highly correlated. Always masking is inversely correlated with never masking (-0.68), rarely masking (-0.73), sometimes masking (-0.67), and frequently masking (-0.52). Surprisingly, we do not observe many high correlations with our variables most of interest, rate of COVID-19 cases and COVID-19 death rate.
+
+Education and income are  highly correlated, with the percentage of adults with bachelors positively correlated with median household income (0.68) and negatively correlated with adults with less than a high school degree (-0.60). Education and income are also connected to the 2019 death rate, which is inversely correlated with income (-0.55) and adults with higher than a bachelor's degree (-0.47).
+
+Indeed, most of the strong correlations we observe are between variables realted to education, employment status, and income. The civilian labor force is positively correlated to those with a bachelor's degree or higher (0.38) and negatively correlated to adults with less than a high school degree (-0.42) and unemployment rate (-0.50). The log of the median household income is positively tied to the income as a percentage of the state total (0.82) and adults with bachelor's degree (0.69) while negatively correlated to employment (-0.44) and adults with less than a high school degree (-0.58). The percentage of the population in poverty is positively correlated to unemployment (0.48) and adults with less than a high school degree (0.64) and negatively correlated to income (-0.88), adults with a bachelor's degree (-0.55), and household income in relation to the state (-0.73).
+
+In short, the strongest observed trends can be summarized with the unsurprising statement: Counties with higher rates of higher education tend to have more people employed, higher median household incomes, and lower death rates. Here, we already begin to see the intersection of wealth and public health.
+
+# 3) Compute KMO or other measure (i.e. just look at matrix produced above) to comment on suitability of data for factor analysis.
+
+```{r}
+paf(as.matrix(dat))$KMO
+```
+
+Noting a low KMO of 0.52, we determine that our data is "miserable" for factor analysis. Nevertheless, we continue on! From the matrix above, there are a few very strongly correlated variables with correlations above 0.6 in absolute value - these strong correlations give us hope that factor analysis will produce some interesting results, though it is worth noting that this is probably not the best technique for our data given how complicated county demographics can be.
+
+# 4) Use Principle Components (or appropriate option in Factor Analysis) to decide on a number of latent factors. You can use Scree Plot, eigenvalue>1, or parallel analysis.
+
+```{r}
+pc1 <- princomp(dat, cor=TRUE)
+
+screeplot(pc1,type="lines",col="red",lwd=2,pch=19,cex=1.2,main="Scree Plot of COVID-19 County Data")
+
+round(pc1$sdev^2, 2)
+```
+
+According to the Eigenvalue > 1 method, the first 5 PC’s should be used. According to the scree plot elbow method, the first 3 PC’s should be used. Note that parallel analysis, though the preferred method, would not have been appropriate here because the data does not follow a multivariate normal distribution, as has been examined in other psets.
+
+To avoid an unnecessarily complicated model, we will choose to use the scree plot elbow method and assume 3 latent factors.
+
+# 5) Perform a series of factor analyses using orthogonal models. First, try at least two extraction methods (choose from Principle Components, Principle Axis Factoring, Iterative Principle Components, Maximum Likelihood). Use some method for comparing extraction methods to choose a ‘best’ method (i.e. RMSR or # residuals greater than .05).
+
+## Maximum Likelihood
+
+```{r}
+fact1 <- factanal(dat, factors = 3)
+```
+
+### Principle Axis Factoring
+
+```{r}
+fact2 <- paf(as.matrix(dat))
+```
+
+### Discussion of Best Method - TO DO
+
+# 6) Once you’ve chosen an extraction method, try a varimax and/or a quartimax rotation. Pick one of these rotations and discuss the interpretation of the final factors. Make one or more loading plots as appropriate.
+
+# 7) Write a short paragraph summarizing your findings.
+
+Using 19 continous demographic and COVID-19 variables measured on U.S. counties, we determined there to be 3 latent factors (as indicated by a scree plot).

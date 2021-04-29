@@ -190,4 +190,10 @@ From the second plot, it seems that Factor 3 is similar to Factor 2 as some sort
 
 # 7) Write a short paragraph summarizing your findings.
 
-Using 19 continuous demographic and COVID-19 variables measured on U.S. counties, we determined there to be 3 latent factors (as indicated by a scree plot).
+Using 19 continuous demographic and COVID-19 variables measured on U.S. counties, we determined there to be 3 latent factors (as indicated by a scree plot). Despite this generally reliable determination, two of the three factors proved to be very related in character and potentially redundant. It is unclear why this may have occurred, but it may suggest that the scree plot is not the best way to determine how many factors to use in analyzing our data set. So it goes.
+
+When looking at our results, it is important to consider that we use a few interrelated variables. That's not meant to refer to the moderately-/highly-correlated variables like income and education, but rather those referring to mask-wearing habits. When `Always_Wear_Mask_Survey` increases, the other mask-wearing survey response values must necessarily decrease on net. Perhaps that could contribute to the scree discrepancy.
+
+Or who knows, maybe all our issues trace back to the horrid KMO value.
+
+Ultimately, though, we come out with three or maybe two latent factors in the data, where one is predominantly related to mask habits, and the other is largely a socioeconomic axis. This finding is consistent wtih what we have seen in previous psets. Principal axis factoring works best for our data, the package limitation described above notwithstanding.

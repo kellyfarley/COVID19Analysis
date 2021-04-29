@@ -20,6 +20,7 @@ library(corrplot)
 library(tidyverse)
 library(rela)
 library(psych)
+library(dplyr)
 ```
 
 # Contributors
@@ -51,9 +52,7 @@ raw$logCovid_Confirmed_Cases_as_pct <- log(raw$Covid_Confirmed_Cases_as_pct + 0.
 # only want continuous variabless
 dat <- raw[, c(5:28)]
 # remove untransformed variables and integers
-dat <- dat %>%
-        select(-Covid_Confirmed_Cases_as_pct, -Median_Household_Income_2019, -Percent_Poverty_2019,
-               -Rural_Urban_Code_2013, -Economic_Typology_2015 )
+dat <- dat[, -c(18, 7, 9, 16, 17)]
 ```
 
 # 1) Look through indicators (questions). Think about which indicators might be related through latent factors. (nothing to turn in here)
@@ -68,7 +67,7 @@ corrplot.mixed(cor(dat), lower.col = "black", upper = "ellipse", tl.col = "black
 
 We observe many weak correlations and a few strong correlations.
 
-The masking survey responses are highly correlated. Always masking is inversely correlated with never masking (-0.68), rarely masking (-0.73), sometimes masking (-0.67), and frequently masking (-0.52). Surprisingly, we do not observe many high correlations with our variables most of interest, rate of COVID-19 cases and COVID-19 death rate.
+The masking survey responses are highly correlated. Always masking is inversely correlated with never masking (-0.68), rarely masking (-0.73), sometimes masking (-0.67), and frequently masking (-0.52); this makes sense considering their linear dependence as limited survey responses. Surprisingly, we do not observe many high correlations with our variables most of interest, rate of COVID-19 cases and COVID-19 death rate.
 
 Education and income are  highly correlated, with the percentage of adults with bachelors positively correlated with median household income (0.68) and negatively correlated with adults with less than a high school degree (-0.60). Education and income are also connected to the 2019 death rate, which is inversely correlated with income (-0.55) and adults with higher than a bachelor's degree (-0.47).
 
@@ -104,18 +103,91 @@ To avoid an unnecessarily complicated model, we will choose to use the scree plo
 
 ```{r}
 fact1 <- factanal(dat, factors = 3)
+fact1
 ```
 
-### Principle Axis Factoring
+## Principal Axis Factoring
 
 ```{r}
+# Note that we couldn't get this version of principal axis factoring to converge
+# within 2-10 factors
+#fact2 <- fa(dat, nfactors = 3, fm = "pa")
+
+# We also couldn't get iterative PCA to converge
+# within 2-10 factors
+#fact2 <- fa(dat, nfactors = 3, SMC = FALSE, fm = "pa")
+
 fact2 <- paf(as.matrix(dat))
+summary(fact2)
 ```
 
-### Discussion of Best Method - TO DO
+## Discussion of Best Method
+
+```{r}
+# for maximum likelihood
+
+#get reproduced correlation matrix
+repro1 <- fact1$loadings%*%t(fact1$loadings)
+#residual correlation matrix
+resid1 <- fact1$cor - repro1
+#round(resid1, 2)
+#get root-mean squared residuals
+len <- length(resid1[upper.tri(resid1)])
+(RMSR1 <- sqrt(sum(resid1[upper.tri(resid1)]^2)/len))
+
+#get proportion of residuals greater than 0.05 in absolute value
+paste0(round(sum(rep(1, len)[abs(resid1[upper.tri(resid1)])>0.05])/len*100),"%")
+```
+
+```{r}
+# for principal axis factoring
+# check summary above as well checking out RMS
+summary(fact2)$RMS
+```
+
+For the 3-factor maximum likelihood method, we can see that the root mean squared residual (RMSR) is 0.067 and approximately 25% (i.e., a relatively high percentage) of residuals are greater than 0.05.
+
+For the principal axis factoring (PAF) method, we can see that the RMSR is 0.031. 
+
+The lower RMSR of the PAF method suggests that it is the better method. However, note that we ran this PAF method using the `paf` function in the `rela` package. We could not run PAF using the `fa` function in the `psych` package due to a failure to converge. Thus, we remain skeptical about using this more general `fa` function. 
 
 # 6) Once you’ve chosen an extraction method, try a varimax and/or a quartimax rotation. Pick one of these rotations and discuss the interpretation of the final factors. Make one or more loading plots as appropriate.
 
+We will use factor analysis using maximum likelihood for this analysis.
+
+Let's try a varimax rotation.
+
+```{r}
+fact3 <- factanal(dat, factors = 3, rotation = "varimax")
+```
+
+To get the loading plots for this three factor model, we will generate two plots: the first comparing Factor 1 and Factor 2, and the second comparing Factor 1 and Factor 3.
+
+```{r}
+#first two factors
+plot(fact3$loadings, pch = 18, col = 'red')
+abline(h = 0)
+abline(v = 0)
+text(fact3$loadings, labels = names(dat), cex = 0.8)
+```
+
+
+
+```{r}
+#factors 1 and 3
+plot(fact3$loadings[, c(1,3)], pch = 18, col = 'red')
+abline(h = 0)
+abline(v = 0)
+text(fact3$loadings[, c(1,3)], labels = names(dat), cex = 0.8)
+```
+
+Interpreting these plots, we can clearly see that Factor 1 is discriminating between the mask survey responses. The rotation likely aided in allowing the variables `Frequently_Wear_Mask_Survey` and `Always_Wear_Mask_Survey` to very strictly according to Factor 1 (as opposed to Factor 2 (as seen in the first plot) or Factor 3 (as seen in the second plot)). 
+
+From the first plot, we can say that Factor 2 is some sort of economic/development index, with higher values being occupied by variables like `Percent_Adults_Bachelors_or_Higher` and `Civilian_Labor_Force_2019_as_pct`, and with lower values being occupied by variables like `Percent_Adults_Less_Than_HS` and `Unemployment_Rate_2019`. The rotation likely helped reduce variability in the other factor direction.
+
+From the second plot, it seems that Factor 3 is similar to Factor 2 as some sort of economic/development index, although the Factor 3 variables (compared to the Factor 2 variables) demonstrate less variability along Factor 1. The second plot is quite concentrated near the origin, so it is somewhat difficult to interpret. This plot may suggest that Factor 3 is somewhat redundant, considering that it appears to pick up trends in variables similar to those described above for Factor 2. Nevertheless, the scree plot analysis did demonstrate importance to the inclusion of a third factor.  
+
+
 # 7) Write a short paragraph summarizing your findings.
 
-Using 19 continous demographic and COVID-19 variables measured on U.S. counties, we determined there to be 3 latent factors (as indicated by a scree plot).
+Using 19 continuous demographic and COVID-19 variables measured on U.S. counties, we determined there to be 3 latent factors (as indicated by a scree plot).

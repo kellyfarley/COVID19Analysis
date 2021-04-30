@@ -3,12 +3,12 @@ title: "S&DS 363 Homework 7"
 author: "Evan Collins, Kelly Farley, Ken Stier"
 date: "28 April 2021"
 output:
+  pdf_document:
+    latex_engine : xelatex
   html_document:
    toc: yes
    toc_float:
      collapsed: no
-  pdf_document:
-    latex_engine : xelatex
 ---
 
 ```{r, message=F, warning=F}
@@ -62,7 +62,9 @@ dat <- dat[, -c(18, 7, 9, 16, 17)]
 ```{r}
 cor(dat)
 
-corrplot.mixed(cor(dat), lower.col = "black", upper = "ellipse", tl.col = "black", number.cex = .3, tl.pos = "lt", tl.cex = .6, p.mat = cor.mtest(dat, conf.level = .95)$p, sig.level = .05)
+corrplot.mixed(cor(dat), lower.col = "black", upper = "ellipse", tl.col = "black", 
+               number.cex = .3, tl.pos = "lt", tl.cex = .6, 
+               p.mat = cor.mtest(dat, conf.level = .95)$p, sig.level = .05)
 ```
 
 We observe many weak correlations and a few strong correlations.
@@ -88,7 +90,8 @@ Noting a low KMO of 0.52, we determine that our data is "miserable" for factor a
 ```{r}
 pc1 <- princomp(dat, cor=TRUE)
 
-screeplot(pc1,type="lines",col="red",lwd=2,pch=19,cex=1.2,main="Scree Plot of COVID-19 County Data")
+screeplot(pc1,type="lines",col="red",lwd=2,pch=19,cex=1.2,
+          main="Scree Plot of COVID-19 County Data")
 
 round(pc1$sdev^2, 2)
 ```

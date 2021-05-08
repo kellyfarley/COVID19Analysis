@@ -3,12 +3,12 @@ title: "S&DS 563/S&DS 363 Final Project"
 author: "Evan Collins, Kelly Farley, Ken Stier"
 date: "15 May 2021"
 output:
+  pdf_document:
+    latex_engine : xelatex
   html_document:
    toc: yes
    toc_float:
      collapsed: no
-  pdf_document:
-    latex_engine : xelatex
 ---
 
 ```{r include = FALSE}

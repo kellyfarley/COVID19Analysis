@@ -1,0 +1,181 @@
+---
+title: "S&DS 563/S&DS 363 Final Project"
+author: "Evan Collins, Kelly Farley, Ken Stier"
+date: "15 May 2021"
+output:
+  html_document:
+   toc: yes
+   toc_float:
+     collapsed: no
+  pdf_document:
+    latex_engine : xelatex
+---
+
+```{r include = FALSE}
+# hides code chunks globally
+knitr::opts_chunk$set(echo=FALSE)
+```
+
+```{r, message=F, warning=F, results = "hide"}
+library(dplyr)
+library(corrplot)
+library(PerformanceAnalytics)
+library(FactoMineR)
+library(car)
+library(tidyverse)
+library(Rmisc)
+library(MASS)
+library(biotools)
+library(DiscriMiner)
+library(klaR)
+library(heplots)
+library(ggplot2)
+source("http://www.reuningscherer.net/multivariate/R/CSQPlot.r.txt")
+```
+
+
+# Introduction
+
+With the nadir of the SARS-CoV-2 pandemic finally subsiding, the task of understanding the epidemiological factors contributing to the propagation of COVID-19 has only begun. Understanding relationships between COVID-19 spread prevention and socioeconomic variables will prove vital to inform us of how to mitigate the propagation of the next pandemic. This report aims to understand how the economic, education, behavioral, and population data for the 3141 U.S. counties relate to COVID-19 case data.
+
+
+# Design and Primary Questions
+
+This report deploys three multivariate techniques to examine three questions in particular:
+
+1. How do the 3141 counties differ from one another, i.e., how do the socioeconomic and COVID-19 data relate to one another when distinguishing U.S. counties? Principal components analysis (PCA) will help to reduce the dimensionality of our large dataset, increasing interpretability of underlying trends between clusters of variables. 
+
+2. Which U.S. counties are similar to one another? Cluster analysis will enable the clustering of selected counties into a discrete number of groups based on similar socioeconomic and COVID-19 data.
+
+3. (Ken/Kelly - Of your choosing. Of course, can adjust 1 and 2 if you'd like too.)
+
+
+# Data
+
+The dataset referenced in this report includes COVID-19 infection and death statistics from U.S. counties (sourced from Johns Hopkins, as of 28 April 2021), combined with economic, education, and population data (sourced from various government agencies) and also survey responses about mask-wearing frequencies (sourced from NYT). 
+
+3141 complete observations on 10 continuous variables and 6 categorical variables. Extensive variable descriptions can be found [here](http://evancollins.com/variable_descriptions_final.html). 
+
+- **6 continuous variables**: FIPS, county name, state name, rural urban type, rural urban code, economic typology
+
+- **9 continuous variables**: "Always" wear mask survey response percent, unemployment rate, median household income, percent poverty, percent of adults with less than a high school education, death rate, percent civilian labor force, percent of county population that has had confirmed COVID-19 cases, and percent of county population that has died from COVID-19. 
+
+
+```{r}
+raw <- read.csv("https://evancollins.com/covid_and_demographics_final.csv")
+
+# Regroup Rural-Urban Codes
+raw$Rural_Urban_Type <- raw$Rural_Urban_Code_2013
+raw$Rural_Urban_Type[raw$Rural_Urban_Code_2013 == 1] <- "Urban"
+raw$Rural_Urban_Type[raw$Rural_Urban_Code_2013 == 2] <- "Urban"
+raw$Rural_Urban_Type[raw$Rural_Urban_Code_2013 == 3] <- "Urban"
+raw$Rural_Urban_Type[raw$Rural_Urban_Code_2013 == 4] <- "Suburban"
+raw$Rural_Urban_Type[raw$Rural_Urban_Code_2013 == 5] <- "Suburban"
+raw$Rural_Urban_Type[raw$Rural_Urban_Code_2013 == 6] <- "Suburban"
+raw$Rural_Urban_Type[raw$Rural_Urban_Code_2013 == 7] <- "Rural"
+raw$Rural_Urban_Type[raw$Rural_Urban_Code_2013 == 8] <- "Rural"
+raw$Rural_Urban_Type[raw$Rural_Urban_Code_2013 == 9] <- "Rural"
+
+# log transformations of our continuous variables
+raw$logMedian_Household_Income_2019 <- log(raw$Median_Household_Income_2019 + 0.0001)
+raw$logPercent_Poverty_2019 <- log(raw$Percent_Poverty_2019 + 0.0001)
+raw$logCovid_Confirmed_Cases_as_pct <- log(raw$Covid_Confirmed_Cases_as_pct + 0.0001)
+
+# Reduce dataset to variables of interest
+raw <- raw[, -1]
+raw <- raw[, c(1, 2, 3, 8, 9, 10, 12, 13, 17, 19, 20, 21, 22, 24, 25)]
+
+# reorder data so categorical variables are first
+raw <- raw[, c(3, 1, 2, 15, 10, 11, 4, 5, 6, 7, 8, 9, 14, 12, 13)]
+```
+
+
+```{r, results = "hide", fig.show = "hide"}
+boxplot(raw[, c(7:15)])
+```
+
+```{r, results = "hide", fig.show = "hide"}
+for (i in 7:15){
+ qqPlot(raw[, c(i)]) 
+}
+```
+
+```{r}
+# Take log of every continuous variable
+raw_trans <- raw
+raw_trans$Always_Wear_Mask_Survey_Log <- log(raw_trans$Always_Wear_Mask_Survey + 0.01)
+raw_trans$Unemployment_Rate_2019_Log <- log(raw_trans$Unemployment_Rate_2019 + 0.01)
+raw_trans$Median_Household_Income_2019_Log <- log(raw_trans$Median_Household_Income_2019 + 0.01)
+raw_trans$Percent_Poverty_2019_Log <- log(raw_trans$Percent_Poverty_2019 + 0.01)
+raw_trans$Percent_Adults_Less_Than_HS_Log <- log(raw_trans$Percent_Adults_Less_Than_HS + 0.01)
+raw_trans$Death_Rate_2019_Log <- log(raw_trans$Death_Rate_2019 + 0.01)
+raw_trans$Civilian_Labor_Force_2019_as_pct_Log <- log(raw_trans$Civilian_Labor_Force_2019_as_pct + 0.01)
+raw_trans$Covid_Confirmed_Cases_as_pct_Log <- log(raw_trans$Covid_Confirmed_Cases_as_pct + 0.01)
+raw_trans$Covid_Deaths_as_pct_Log <- log(raw_trans$Covid_Deaths_as_pct + 0.01)
+
+# Log only data
+raw_trans_log <- raw_trans[, c(1:6, 16:24)]
+```
+
+```{r}
+# Standardize variables since on different scales
+scaled_dat_log <- raw_trans_log %>% mutate_at(c(7:15), ~(scale(.) %>% as.vector))
+```
+```{r, results = "hide", fig.show = "hide"}
+boxplot(scaled_dat_log[, c(7:15)])
+```
+
+```{r, results = "hide", fig.show = "hide"}
+for (i in 7:15){
+ qqPlot(scaled_dat_log[, c(i)]) 
+}
+```
+
+```{r, results = "hide", fig.show = "hide"}
+db <- scaled_dat_log
+
+# Covid cases outlier exclusion
+db[which(db$Covid_Confirmed_Cases_as_pct_Log > quantile(db$Covid_Confirmed_Cases_as_pct_Log, .25) - 1.5*IQR(db$Covid_Confirmed_Cases_as_pct_Log) & db$Covid_Confirmed_Cases_as_pct_Log < quantile(db$Covid_Confirmed_Cases_as_pct_Log, .75) + 1.5*IQR(db$Covid_Confirmed_Cases_as_pct_Log)),] -> db_clean
+
+# Report percentage of items this restriction included
+# 6% is sufficiently low
+(length(db$Covid_Confirmed_Cases_as_pct_Log) - length(db_clean$Covid_Confirmed_Cases_as_pct_Log)) / length(db$Covid_Confirmed_Cases_as_pct_Log)
+
+
+# Covid deaths outlier exclusion
+db_clean[which(db_clean$Covid_Deaths_as_pct_Log > quantile(db_clean$Covid_Deaths_as_pct_Log, .25) - 1.5*IQR(db_clean$Covid_Deaths_as_pct_Log) & db_clean$Covid_Deaths_as_pct_Log < quantile(db_clean$Covid_Deaths_as_pct_Log, .75) + 1.5*IQR(db_clean$Covid_Deaths_as_pct_Log)),] -> db_clean1
+
+# Report percentage of items this restriction included
+# 2% is sufficiently low
+(length(db_clean$Covid_Deaths_as_pct_Log) - length(db_clean1$Covid_Deaths_as_pct_Log)) / length(db_clean$Covid_Deaths_as_pct_Log)
+
+
+# Death rate outlier exclusion
+db_clean1[which(db_clean1$Death_Rate_2019_Log > quantile(db_clean1$Death_Rate_2019_Log, .25) - 1.5*IQR(db_clean1$Death_Rate_2019_Log) & db_clean1$Death_Rate_2019_Log < quantile(db_clean1$Death_Rate_2019_Log, .75) + 1.5*IQR(db_clean1$Death_Rate_2019_Log)),] -> db_clean2
+
+# Report percentage of items this restriction included
+# 3% is sufficiently low
+(length(db_clean1$Death_Rate_2019_Log) - length(db_clean2$Death_Rate_2019_Log)) / length(db_clean1$Death_Rate_2019_Log)
+
+scaled_dat_log_clean <- db_clean2
+```
+
+```{r, results = "hide", fig.show = "hide"}
+for (i in 7:15){
+ qqPlot(scaled_dat_log_clean[, c(i)]) 
+}
+```
+
+
+We made normal quantile plots for each of the 9 continuous variables in the dataset. This revealed that most variables initially did not have a univariate normal distribution. Taking the log-transform of the 10 continuous variables helped most variables have more linear quantile plots. Note that we also standardized the continuous variables since they were measured on different scales. Moreover, for death rate, percent COVID-19 cases, percent COVID-19 deaths, a 1.5 x IQR outlier exclusion method was applied to enable these variables to take on more normal univariate distributions. Note that the outlier exclusion method reduced the number of counties that we will analyze to 2,814 observation. Hence, this outlier exclusion method reduced the dataset by approximately 10%. This is somewhat high; however, we deemed that the benefits of having univariate and multivariate distributions to outweigh this disadvantage. We these changes made, the 9 continuous variables all had univariate normal distributions.
+
+```{r}
+CSQPlot(scaled_dat_log_clean[, 7:15], label = "Counties")
+```
+
+A chi-square quantile plot (shown above) reflects that our data does not have a multivariate normal distribution.
+
+WE NEED TO ASK PROF ABOUT IF WE ABSOLUTELY NEED TO HAVE MULTIVARIATE NORMALITY.
+
+
+

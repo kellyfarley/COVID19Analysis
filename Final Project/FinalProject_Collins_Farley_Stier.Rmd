@@ -215,6 +215,14 @@ WE NEED TO ASK PROF ABOUT IF WE ABSOLUTELY NEED TO HAVE MULTIVARIATE NORMALITY.
 
 # Summary Statistics
 
+```{r}
+dim(scaled_dat_log_clean)
+table(scaled_dat_log_clean$Rural_Urban_Type)
+summary(scaled_dat_log_clean[,6:15])
+```
+
+We can see that there are data from 2814 of the 3006 counties in the US, with a fairly narrow distribution of the number of counties of each rural-urban type. The distributions in the quantitative variables are pretty consistent, which we also saw in the box plot above, meaning that we may not require standardization of our data for later analyses.
+
 # Principle Components Analysis
 
 # Cluster Analysis

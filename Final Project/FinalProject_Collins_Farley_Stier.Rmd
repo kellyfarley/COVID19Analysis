@@ -30,6 +30,8 @@ library(DiscriMiner)
 library(klaR)
 library(heplots)
 library(ggplot2)
+library(cluster)
+library(fpc)
 source("http://www.reuningscherer.net/multivariate/R/CSQPlot.r.txt")
 source("http://reuningscherer.net/multivariate/R/HClusEval3.R.txt")
 ```
@@ -240,15 +242,42 @@ boxplot(stlogdata[,7:15])
 ```{r}
 euclid <- dist(stlogdata[,7:15], method="euclidean")
 euclusters_ward <- hclust(euclid, method="ward.D")
-plot(euclusters_ward,labels=as.vector(stlogdata[,"County_Name"]),cex=0.1,xlab="",ylab="Distance",lwd=0.2, main="Euclidean Distance & Ward Clustering"); rect.hclust(euclusters_ward, k = 4)
+plot(euclusters_ward,labels=as.vector(stlogdata[,"County_Name"]),cex=0.1,xlab="",ylab="Distance",lwd=0.2, main="Euclidean Distance & Ward Clustering")
 ```
 
 ```{r}
 hclus_eval(stlogdata[,7:15], dist_m = 'euclidean', clus_m = 'ward.D', plot_op = T, print_num = 15)
 ```
 
+There are peaks in the RMSSTD at 3, 9, and most notably 12,indicating that these may be reasonable group counts. SPRSQ tapers at 9, supporting the idea that there may be 9 groups. However, the tapering is far more prominent at 2 and 4 and is echoed in the RSQ, so a lower group count may be indicated. Let's go back to the dendrogram to see how this fits.
+
 ```{r}
-clusplot(stlogdata[,7:15], cuts, color = TRUE, shade = TRUE, labels = 2, lines = 0, main = "County Cluster Plot, Ward's Method, First two PC", cex = .5)
+plot(euclusters_ward,labels=as.vector(stlogdata[,"County_Name"]),cex=0.1,xlab="",ylab="Distance",lwd=0.2, main="Euclidean Distance & Ward Clustering"); rect.hclust(euclusters_ward, k = 3)
+
+plot(euclusters_ward,labels=as.vector(stlogdata[,"County_Name"]),cex=0.1,xlab="",ylab="Distance",lwd=0.2, main="Euclidean Distance & Ward Clustering"); rect.hclust(euclusters_ward, k = 9)
+
+plot(euclusters_ward,labels=as.vector(stlogdata[,"County_Name"]),cex=0.1,xlab="",ylab="Distance",lwd=0.2, main="Euclidean Distance & Ward Clustering"); rect.hclust(euclusters_ward, k = 12)
+```
+
+The large spike in RMSSTD is very promising, and the dendrogram clustering looks apt as well, but we don't want to run the risk of having too many clusters!
+
+```{r}
+cuts3 <- cutree(euclusters_ward, k=3)
+cuts9 <- cutree(euclusters_ward, k=9)
+cuts12 <- cutree(euclusters_ward, k=12)
+
+clusplot(stlogdata[,7:15], cuts3, color = TRUE, shade = TRUE, labels = 0, lines = 0, main = "County Cluster Plot, Ward's Method, First two PC, 3 groups", cex = .1)
+
+clusplot(stlogdata[,7:15], cuts9, color = TRUE, shade = TRUE, labels = 0, lines = 0, main = "County Cluster Plot, Ward's Method, First two PC, 9 groups", cex = .1)
+
+clusplot(stlogdata[,7:15], cuts12, color = TRUE, shade = TRUE, labels = 0, lines = 0, main = "County Cluster Plot, Ward's Method, First two PC, 12 groups", cex = .1)
+```
+```{r}
+plotcluster(stlogdata[,7:15], cuts3, main = "Four Cluster Solution in DA Space, 3 groups", xlab = "First Discriminant Function", ylab = "Second Discriminant Function", cex = .4)
+
+plotcluster(stlogdata[,7:15], cuts9, main = "Four Cluster Solution in DA Space, 9 groups", xlab = "First Discriminant Function", ylab = "Second Discriminant Function", cex = .4)
+
+plotcluster(stlogdata[,7:15], cuts12, main = "Four Cluster Solution in DA Space, 12 groups", xlab = "First Discriminant Function", ylab = "Second Discriminant Function", cex = .4)
 ```
 
 # Correspondence Analysis

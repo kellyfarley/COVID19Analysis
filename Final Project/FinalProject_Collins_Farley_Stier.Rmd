@@ -31,6 +31,7 @@ library(klaR)
 library(heplots)
 library(ggplot2)
 source("http://www.reuningscherer.net/multivariate/R/CSQPlot.r.txt")
+source("http://reuningscherer.net/multivariate/R/HClusEval3.R.txt")
 ```
 
 
@@ -218,14 +219,37 @@ WE NEED TO ASK PROF ABOUT IF WE ABSOLUTELY NEED TO HAVE MULTIVARIATE NORMALITY.
 ```{r}
 dim(scaled_dat_log_clean)
 table(scaled_dat_log_clean$Rural_Urban_Type)
+table(scaled_dat_log_clean$Economic_Typology_2015)
 summary(scaled_dat_log_clean[,6:15])
 ```
 
-We can see that there are data from 2814 of the 3006 counties in the US, with a fairly narrow distribution of the number of counties of each rural-urban type. The distributions in the quantitative variables are pretty consistent, which we also saw in the box plot above, meaning that we may not require standardization of our data for later analyses.
+We can see that there are data from 2814 of the 3006 counties in the US, with a fairly narrow distribution of the number of counties of each rural-urban type. The distributions in the quantitative variables are pretty consistent, which we also saw in the box plot above, meaning that standardization might not make a huge difference. Let's go ahead and make a standardized version of the data set anyway, though.
+
+```{r}
+stlogdata <- scaled_dat_log_clean
+for(i in 7:15) {
+  stlogdata[,i] <- (stlogdata[,i] - mean(stlogdata[,i])) / sd(stlogdata[,i])
+}
+boxplot(stlogdata[,7:15])
+```
 
 # Principle Components Analysis
 
 # Cluster Analysis
+
+```{r}
+euclid <- dist(stlogdata[,7:15], method="euclidean")
+euclusters_ward <- hclust(euclid, method="ward.D")
+plot(euclusters_ward,labels=as.vector(stlogdata[,"County_Name"]),cex=0.1,xlab="",ylab="Distance",lwd=0.2, main="Euclidean Distance & Ward Clustering"); rect.hclust(euclusters_ward, k = 4)
+```
+
+```{r}
+hclus_eval(stlogdata[,7:15], dist_m = 'euclidean', clus_m = 'ward.D', plot_op = T, print_num = 15)
+```
+
+```{r}
+clusplot(stlogdata[,7:15], cuts, color = TRUE, shade = TRUE, labels = 2, lines = 0, main = "County Cluster Plot, Ward's Method, First two PC", cex = .5)
+```
 
 # Correspondence Analysis
 

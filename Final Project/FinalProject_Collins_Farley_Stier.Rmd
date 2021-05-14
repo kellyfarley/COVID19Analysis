@@ -3,12 +3,12 @@ title: "S&DS 563/S&DS 363 Final Project"
 author: "Evan Collins, Kelly Farley, Ken Stier"
 date: "15 May 2021"
 output:
-  pdf_document:
-    latex_engine : xelatex
   html_document:
    toc: yes
    toc_float:
      collapsed: no
+  pdf_document:
+    latex_engine : xelatex
 ---
 
 ```{r include = FALSE}
@@ -197,7 +197,7 @@ db_clean1[which(db_clean1$Death_Rate_2019_Log > quantile(db_clean1$Death_Rate_20
 scaled_dat_log_clean <- db_clean2
 ```
 
-# Descriptive Plots
+# Descriptive Plots (todo)
 
 ```{r, results = "hide", fig.show = "hide"}
 for (i in 7:15){
@@ -237,7 +237,46 @@ boxplot(stlogdata[,7:15])
 
 # Principle Components Analysis
 
-# Cluster Analysis
+```{r}
+# continuous metric data only (standard log metric)
+stlm <- stlogdata[7:15]
+
+CSQPlot(stlm[7:15], label="COVID-19 Data")
+```
+
+First off, we note that the metric variables in our data do not follow a multivariate normal distribution. This is not an assumption for PCA but is of note because we will not be able to use parallel analysis to determine which components to keep.
+
+```{r}
+corrplot.mixed(round(cor(stlm), 2), lower.col = "black", upper = "ellipse", tl.col = "black", number.cex = .3, order = "hclust", tl.pos = "lt", tl.cex = .25)
+```
+
+PCA should work well because there are many variables highly correlated with other variables. For instance, the correlation between the log of the unemployment rate and the labor force as a percent is -.065, the correlation between the log of the median household income and percent poverty is -0.88, and the correlation between the percent of COVID-19 cases and the percent of COVID-19 deaths is 0.47. There appear to be underlying trends about the counties (about beliefs about COVID-19, about wealth/education, etc) that could be summarized in linear combinations of the 19 metric variables we have currently.
+
+```{r}
+pc1 <- princomp(stlm, cor=TRUE) # run PCA on correlation matrix
+
+print(summary(pc1), digits = 2, loadings=pc1$loadings, cutoff=0) # results
+
+round(pc1$sdev^2, 2) # eigenvalues
+
+screeplot(pc1,type="lines",col="red",lwd=2,pch=19,cex=1.2,main="Scree Plot of Transformed COVID-19 Data") # screeplot
+```
+
+According to the total variance explained method, using a cutoff of 1, the first 3 PC's should be used. According to the Eigenvalue > 1 method, the first 3 PC's should be used. According to the scree plot elbow method, the first 1 PC's should be used. We choose to maintain the first 3 PC's in accordance with the first two methods for a parsimonous but still informative model.
+
+```{r}
+print(summary(pc1), digits = 2, loadings=pc1$loadings, cutoff=0)
+```
+
+Looking at PC1: This principle component seems to be related to wealth, work status, and education. It combines log percent poverty (-0.46) with the log of the median household income (0.45), the log of the civilian labor force (0.41), and the percent of adults with a bachelor’s degree or higher (-0.39). A higher value on this PC indicates more employment, more jobs, and more education.
+
+Looking at PC2: This principle component seems to be a measure of masking behaviors and relation to COVID-19 infection. It combines the percentage of those who say they always mask (0.52), the log of the COVID-19 infection rate (-0.60), and the log of the COVID-19 death rate (-0.46). A higher value on this PC indicates more masking and less COVID-19 infection and death.
+
+Looking at PC3: This principle component seems to be a combination of the first two and relates underlying traits about the county to COVID-19 infection. It combines the log of the 2019 death rate (-0.51) with the cumulative percentage of population with the log of the percentage of adults with less than a high school degree (0.32), the log of the COVID-19 infection rate (0.40), and the log of the COVID-19 death rate (0.31). A higher value on this PC indicates less education and more COVID-19 infection and death.
+
+Using PCA, we can reduce these 9 metric variables to 3 composite variables that are related to wealth and education, attitudes about masking, and population. These 3 PC’s can account for 73% of the total variability, which is fairly effective! We note that COVID-19 infection and death rates are related to attitudes and behaviors, like the masking rate, but is also due to factors outside of the control of a county's population, like unemployment and education.
+
+# Cluster Analysis (fix)
 
 ```{r}
 euclid <- dist(stlogdata[,7:15], method="euclidean")
@@ -246,45 +285,45 @@ plot(euclusters_ward,labels=as.vector(stlogdata[,"County_Name"]),cex=0.1,xlab=""
 ```
 
 ```{r}
-hclus_eval(stlogdata[,7:15], dist_m = 'euclidean', clus_m = 'ward.D', plot_op = T, print_num = 15)
+# hclus_eval(stlogdata[,7:15], dist_m = 'euclidean', clus_m = 'ward.D', plot_op = T, print_num = 15)
 ```
 
 There are peaks in the RMSSTD at 3, 9, and most notably 12,indicating that these may be reasonable group counts. SPRSQ tapers at 9, supporting the idea that there may be 9 groups. However, the tapering is far more prominent at 2 and 4 and is echoed in the RSQ, so a lower group count may be indicated. Let's go back to the dendrogram to see how this fits.
 
 ```{r}
-plot(euclusters_ward,labels=as.vector(stlogdata[,"County_Name"]),cex=0.1,xlab="",ylab="Distance",lwd=0.2, main="Euclidean Distance & Ward Clustering"); rect.hclust(euclusters_ward, k = 3)
-
-plot(euclusters_ward,labels=as.vector(stlogdata[,"County_Name"]),cex=0.1,xlab="",ylab="Distance",lwd=0.2, main="Euclidean Distance & Ward Clustering"); rect.hclust(euclusters_ward, k = 9)
-
-plot(euclusters_ward,labels=as.vector(stlogdata[,"County_Name"]),cex=0.1,xlab="",ylab="Distance",lwd=0.2, main="Euclidean Distance & Ward Clustering"); rect.hclust(euclusters_ward, k = 12)
+# plot(euclusters_ward,labels=as.vector(stlogdata[,"County_Name"]),cex=0.1,xlab="",ylab="Distance",lwd=0.2, main="Euclidean Distance & Ward Clustering"); rect.hclust(euclusters_ward, k = 3)
+# 
+# plot(euclusters_ward,labels=as.vector(stlogdata[,"County_Name"]),cex=0.1,xlab="",ylab="Distance",lwd=0.2, main="Euclidean Distance & Ward Clustering"); rect.hclust(euclusters_ward, k = 9)
+# 
+# plot(euclusters_ward,labels=as.vector(stlogdata[,"County_Name"]),cex=0.1,xlab="",ylab="Distance",lwd=0.2, main="Euclidean Distance & Ward Clustering"); rect.hclust(euclusters_ward, k = 12)
 ```
 
 The large spike in RMSSTD is very promising, and the dendrogram clustering looks apt as well, but we don't want to run the risk of having too many clusters!
 
-```{r}
-cuts3 <- cutree(euclusters_ward, k=3)
-cuts9 <- cutree(euclusters_ward, k=9)
-cuts12 <- cutree(euclusters_ward, k=12)
-
-clusplot(stlogdata[,7:15], cuts3, color = TRUE, shade = TRUE, labels = 0, lines = 0, main = "County Cluster Plot, Ward's Method, First two PC, 3 groups", cex = .1)
-
-clusplot(stlogdata[,7:15], cuts9, color = TRUE, shade = TRUE, labels = 0, lines = 0, main = "County Cluster Plot, Ward's Method, First two PC, 9 groups", cex = .1)
-
-clusplot(stlogdata[,7:15], cuts12, color = TRUE, shade = TRUE, labels = 0, lines = 0, main = "County Cluster Plot, Ward's Method, First two PC, 12 groups", cex = .1)
+```{r, eval=F}
+# cuts3 <- cutree(euclusters_ward, k=3)
+# cuts9 <- cutree(euclusters_ward, k=9)
+# cuts12 <- cutree(euclusters_ward, k=12)
+# 
+# clusplot(stlogdata[,7:15], cuts3, color = TRUE, shade = TRUE, labels = 0, lines = 0, main = "County Cluster Plot, Ward's Method, First two PC, 3 groups", cex = .1)
+# 
+# clusplot(stlogdata[,7:15], cuts9, color = TRUE, shade = TRUE, labels = 0, lines = 0, main = "County Cluster Plot, Ward's Method, First two PC, 9 groups", cex = .1)
+# 
+# clusplot(stlogdata[,7:15], cuts12, color = TRUE, shade = TRUE, labels = 0, lines = 0, main = "County Cluster Plot, Ward's Method, First two PC, 12 groups", cex = .1)
+# ```
+# ```{r}
+# plotcluster(stlogdata[,7:15], cuts3, main = "Four Cluster Solution in DA Space, 3 groups", xlab = "First Discriminant Function", ylab = "Second Discriminant Function", cex = .4)
+# 
+# plotcluster(stlogdata[,7:15], cuts9, main = "Four Cluster Solution in DA Space, 9 groups", xlab = "First Discriminant Function", ylab = "Second Discriminant Function", cex = .4)
+# 
+# plotcluster(stlogdata[,7:15], cuts12, main = "Four Cluster Solution in DA Space, 12 groups", xlab = "First Discriminant Function", ylab = "Second Discriminant Function", cex = .4)
 ```
-```{r}
-plotcluster(stlogdata[,7:15], cuts3, main = "Four Cluster Solution in DA Space, 3 groups", xlab = "First Discriminant Function", ylab = "Second Discriminant Function", cex = .4)
 
-plotcluster(stlogdata[,7:15], cuts9, main = "Four Cluster Solution in DA Space, 9 groups", xlab = "First Discriminant Function", ylab = "Second Discriminant Function", cex = .4)
+# Correspondence Analysis (todo)
 
-plotcluster(stlogdata[,7:15], cuts12, main = "Four Cluster Solution in DA Space, 12 groups", xlab = "First Discriminant Function", ylab = "Second Discriminant Function", cex = .4)
-```
+# Conclusions and Discussion (todo)
 
-# Correspondence Analysis
-
-# Conclusions and Discussion
-
-# Points for Further Analysis
+# Points for Further Analysis (todo)
 
 
 

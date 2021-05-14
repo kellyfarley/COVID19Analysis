@@ -16,7 +16,7 @@ output:
 knitr::opts_chunk$set(echo=FALSE)
 ```
 
-```{r, message=F, warning=F, results = "hide"}
+```{r, message=F, warning=F, results = "hide", cache=TRUE}
 library(dplyr)
 library(corrplot)
 library(PerformanceAnalytics)
@@ -197,7 +197,7 @@ db_clean1[which(db_clean1$Death_Rate_2019_Log > quantile(db_clean1$Death_Rate_20
 scaled_dat_log_clean <- db_clean2
 ```
 
-# Descriptive Plots (todo)
+# Descriptive Plots and Summary Statistics
 
 ```{r, results = "hide", fig.show = "hide"}
 for (i in 7:15){
@@ -212,20 +212,23 @@ We made normal quantile plots for each of the 9 continuous variables in the data
 CSQPlot(scaled_dat_log_clean[, 7:15], label = "Counties")
 ```
 
-A chi-square quantile plot (shown above) reflects that our data does not have a multivariate normal distribution.
+A chi-square quantile plot (shown above) reflects that our data does not have a multivariate normal distribution. Thus, none of the techniques we use will require a multivariate normal distribution.
 
-WE NEED TO ASK PROF ABOUT IF WE ABSOLUTELY NEED TO HAVE MULTIVARIATE NORMALITY.
+```{r}
+corrplot.mixed(round(cor(scaled_dat_log_clean[7:15]), 2), lower.col = "black", upper = "ellipse", tl.col = "black", number.cex = .3, order = "hclust", tl.pos = "lt", tl.cex = .25)
+```
 
-# Summary Statistics
+We note many variables highly correlated with other variables, which is good news for PCA. For instance, the correlation between the log of the unemployment rate and the labor force as a percent is -.065, the correlation between the log of the median household income and percent poverty is -0.88, and the correlation between the percent of COVID-19 cases and the percent of COVID-19 deaths is 0.47. There appear to be underlying trends about the counties (about beliefs about COVID-19, about wealth/education, etc) that could be summarized in linear combinations of the 19 metric variables we have currently.
 
 ```{r}
 dim(scaled_dat_log_clean)
 table(scaled_dat_log_clean$Rural_Urban_Type)
 table(scaled_dat_log_clean$Economic_Typology_2015)
 summary(scaled_dat_log_clean[,6:15])
+boxplot(scaled_dat_log_clean[,7:15])
 ```
 
-We can see that there are data from 2814 of the 3006 counties in the US, with a fairly narrow distribution of the number of counties of each rural-urban type. The distributions in the quantitative variables are pretty consistent, which we also saw in the box plot above, meaning that standardization might not make a huge difference. Let's go ahead and make a standardized version of the data set anyway, though.
+We can see that there are data from 2814 of the 3006 counties in the US, with a fairly narrow distribution of the number of counties of each rural-urban type: 907 rural, 841 suburban, and 1066 urban. The distributions in the quantitative variables are pretty consistent, which we also saw in the box plot above, meaning that standardization might not make a huge difference. Let's go ahead and make a standardized version of the data set anyway, though.
 
 ```{r}
 stlogdata <- scaled_dat_log_clean
@@ -238,21 +241,8 @@ boxplot(stlogdata[,7:15])
 # Principle Components Analysis
 
 ```{r}
-# continuous metric data only (standard log metric)
-stlm <- stlogdata[7:15]
+stlm <- stlogdata[,7:15]
 
-CSQPlot(stlm[7:15], label="COVID-19 Data")
-```
-
-First off, we note that the metric variables in our data do not follow a multivariate normal distribution. This is not an assumption for PCA but is of note because we will not be able to use parallel analysis to determine which components to keep.
-
-```{r}
-corrplot.mixed(round(cor(stlm), 2), lower.col = "black", upper = "ellipse", tl.col = "black", number.cex = .3, order = "hclust", tl.pos = "lt", tl.cex = .25)
-```
-
-PCA should work well because there are many variables highly correlated with other variables. For instance, the correlation between the log of the unemployment rate and the labor force as a percent is -.065, the correlation between the log of the median household income and percent poverty is -0.88, and the correlation between the percent of COVID-19 cases and the percent of COVID-19 deaths is 0.47. There appear to be underlying trends about the counties (about beliefs about COVID-19, about wealth/education, etc) that could be summarized in linear combinations of the 19 metric variables we have currently.
-
-```{r}
 pc1 <- princomp(stlm, cor=TRUE) # run PCA on correlation matrix
 
 print(summary(pc1), digits = 2, loadings=pc1$loadings, cutoff=0) # results
@@ -276,7 +266,7 @@ Looking at PC3: This principle component seems to be a combination of the first 
 
 Using PCA, we can reduce these 9 metric variables to 3 composite variables that are related to wealth and education, attitudes about masking, and population. These 3 PC’s can account for 73% of the total variability, which is fairly effective! We note that COVID-19 infection and death rates are related to attitudes and behaviors, like the masking rate, but is also due to factors outside of the control of a county's population, like unemployment and education.
 
-# Cluster Analysis (fix)
+# Cluster Analysis (fix hclus_eval)
 
 ```{r}
 euclid <- dist(stlogdata[,7:15], method="euclidean")
@@ -291,39 +281,58 @@ plot(euclusters_ward,labels=as.vector(stlogdata[,"County_Name"]),cex=0.1,xlab=""
 There are peaks in the RMSSTD at 3, 9, and most notably 12,indicating that these may be reasonable group counts. SPRSQ tapers at 9, supporting the idea that there may be 9 groups. However, the tapering is far more prominent at 2 and 4 and is echoed in the RSQ, so a lower group count may be indicated. Let's go back to the dendrogram to see how this fits.
 
 ```{r}
-# plot(euclusters_ward,labels=as.vector(stlogdata[,"County_Name"]),cex=0.1,xlab="",ylab="Distance",lwd=0.2, main="Euclidean Distance & Ward Clustering"); rect.hclust(euclusters_ward, k = 3)
-# 
-# plot(euclusters_ward,labels=as.vector(stlogdata[,"County_Name"]),cex=0.1,xlab="",ylab="Distance",lwd=0.2, main="Euclidean Distance & Ward Clustering"); rect.hclust(euclusters_ward, k = 9)
-# 
-# plot(euclusters_ward,labels=as.vector(stlogdata[,"County_Name"]),cex=0.1,xlab="",ylab="Distance",lwd=0.2, main="Euclidean Distance & Ward Clustering"); rect.hclust(euclusters_ward, k = 12)
+plot(euclusters_ward,labels=as.vector(stlogdata[,"County_Name"]),cex=0.1,xlab="",ylab="Distance",lwd=0.2, main="Euclidean Distance & Ward Clustering"); rect.hclust(euclusters_ward, k = 3)
+
+plot(euclusters_ward,labels=as.vector(stlogdata[,"County_Name"]),cex=0.1,xlab="",ylab="Distance",lwd=0.2, main="Euclidean Distance & Ward Clustering"); rect.hclust(euclusters_ward, k = 9)
+
+plot(euclusters_ward,labels=as.vector(stlogdata[,"County_Name"]),cex=0.1,xlab="",ylab="Distance",lwd=0.2, main="Euclidean Distance & Ward Clustering"); rect.hclust(euclusters_ward, k = 12)
 ```
 
 The large spike in RMSSTD is very promising, and the dendrogram clustering looks apt as well, but we don't want to run the risk of having too many clusters!
 
-```{r, eval=F}
-# cuts3 <- cutree(euclusters_ward, k=3)
-# cuts9 <- cutree(euclusters_ward, k=9)
-# cuts12 <- cutree(euclusters_ward, k=12)
-# 
-# clusplot(stlogdata[,7:15], cuts3, color = TRUE, shade = TRUE, labels = 0, lines = 0, main = "County Cluster Plot, Ward's Method, First two PC, 3 groups", cex = .1)
-# 
-# clusplot(stlogdata[,7:15], cuts9, color = TRUE, shade = TRUE, labels = 0, lines = 0, main = "County Cluster Plot, Ward's Method, First two PC, 9 groups", cex = .1)
-# 
-# clusplot(stlogdata[,7:15], cuts12, color = TRUE, shade = TRUE, labels = 0, lines = 0, main = "County Cluster Plot, Ward's Method, First two PC, 12 groups", cex = .1)
-# ```
-# ```{r}
-# plotcluster(stlogdata[,7:15], cuts3, main = "Four Cluster Solution in DA Space, 3 groups", xlab = "First Discriminant Function", ylab = "Second Discriminant Function", cex = .4)
-# 
-# plotcluster(stlogdata[,7:15], cuts9, main = "Four Cluster Solution in DA Space, 9 groups", xlab = "First Discriminant Function", ylab = "Second Discriminant Function", cex = .4)
-# 
-# plotcluster(stlogdata[,7:15], cuts12, main = "Four Cluster Solution in DA Space, 12 groups", xlab = "First Discriminant Function", ylab = "Second Discriminant Function", cex = .4)
+```{r}
+cuts3 <- cutree(euclusters_ward, k=3)
+cuts9 <- cutree(euclusters_ward, k=9)
+cuts12 <- cutree(euclusters_ward, k=12)
+
+clusplot(stlogdata[,7:15], cuts3, color = TRUE, shade = TRUE, labels = 0, lines = 0, main = "County Cluster Plot, Ward's Method, First two PC, 3 groups", cex = .1)
+
+clusplot(stlogdata[,7:15], cuts9, color = TRUE, shade = TRUE, labels = 0, lines = 0, main = "County Cluster Plot, Ward's Method, First two PC, 9 groups", cex = .1)
+
+clusplot(stlogdata[,7:15], cuts12, color = TRUE, shade = TRUE, labels = 0, lines = 0, main = "County Cluster Plot, Ward's Method, First two PC, 12 groups", cex = .1)
 ```
+```{r}
+plotcluster(stlogdata[,7:15], cuts3, main = "Four Cluster Solution in DA Space, 3 groups", xlab = "First Discriminant Function", ylab = "Second Discriminant Function", cex = .4)
+
+plotcluster(stlogdata[,7:15], cuts9, main = "Four Cluster Solution in DA Space, 9 groups", xlab = "First Discriminant Function", ylab = "Second Discriminant Function", cex = .4)
+
+plotcluster(stlogdata[,7:15], cuts12, main = "Four Cluster Solution in DA Space, 12 groups", xlab = "First Discriminant Function", ylab = "Second Discriminant Function", cex = .4)
+```
+
+```{r}
+fit <- kmeans(stlm, 3)
+aggregate(stlm, by=list(fit$cluster), FUN=mean)
+```
+
+Recall that we are clustering U.S. counties based on 9 metric, standardized variables. We are trying to find groups of counties with members that are similar to each other but different from other groups - we are finding clusters of *observations*, unlike PCA where we found clusters of *variables.* For the most parsimonous model, we examine 3 clusters that primarily differ on their wealth/education/employment and COVID-19 infection and death rates.
+
+Clusters 1 and 3 are relatively well-off economically. Both have high household incomes, low poverty rates, high civilian labor forces, low unemployment rates, and high education rates. Cluster 3 is more well-off than Cluster 1, perhaps representing those with higher paying jobs. The biggest difference, though, is in COVID-19 responses. Cluster 1 has high COVID-19 infection (0.53) and death rates (0.22), while Cluster 3 has low COVID-19 infection (-0.60) and death rates (-0.75). This difference can potentially be tied back to behavioral differences: counties in Cluster 3 always mask (0.68) while counties in Cluster 1 do not (-0.88). It is important to note that this difference is not necessarily due to any sort of moral gap but more likely due to a gap in resources - it is a privilege to be able to stay informed on scientific discoveries, purchase masks, and maintain social distancing.
+
+In contrast to Clusters 1 and 3, Cluster 2 is underprivileged, with low household income (-0.82), high poverty (0.85), low civilian labor force (-0.82), and a high percent with less than a high school degree (0.76). Cluster 2 is  hit the hardest by COVID-19, with the highest death rate (0.42). Here we most clearly see the connection between underlying economic factors and the impact of COVID-19.  Members of these communities tend to have jobs as essential workers that require work outside of the home. They may have to take public transit. They may be unable to afford grocery delivery services. Affluent communities have the resources to avoid COVID-19 transmission, while impoverished communities may not. These communities are likely to have preexisting conditions that worsen its effects and may lack quality healthcare or health insurance. We also note a potential gap in testing in these communities - death rates are high, but the reported infection rate is incredibly low (-0.01). As we continue to distribute COVID-19 vaccinations, special attention should be placed on supporting these communities most at risk for severe negative consequences associated with COVID-19.
 
 # Correspondence Analysis (todo)
 
-# Conclusions and Discussion (todo)
+# Conclusions and Discussion (add correspondence analysis)
 
-# Points for Further Analysis (todo)
+This report examined connections betweenthe economic, education, behavioral, and population data for the 3141 U.S. counties and COVID-19 infection and death rate data.
 
+Using PCA, we reduced the dimensionality of our large dataset to 3 principle components to explain 73% of the total variability. We highlight that there are two main factors that are associated with risk of COVID-19 infection and death: 1) masking behaviors and 2) socioeconomic status. Masking and wealth are associated with lower COVID-19 infection and death rates. Using cluster analysis, we determined which counties are most similar to each other: there are very well-off counties with high mask compliance and low COVID-19 rates, moderately well-off counties with low-mask compliance and high COVID-19 rates, and impoverished counties with high COVID-19 rates. This clustering implies that differences in masking behaviors and COVID-19 infection may not be due to any sort of moral gap but more likely due to a gap in resources - it is a privilege to be able to stay informed on scientific discoveries, purchase masks, work from home, and maintain social distancing. We also note the that impoverished counties have much higher COVID-19 death rates and may have preexisting conditions that worsen its effects and lack quality healthcare or health insurance.
 
+We can observe these connections, but we cannot make any cause-and-effect statements based on our current observational study. However, even without knowing the cause, we can say that vaccine and education efforts should be prioritized in underprivileged communities with lower masking rates - these communities are being hit the hardest by COVID-19.
+
+# Points for Further Analysis
+
+We hope that studies of COVID-19 death and infection rates will continue, even as vaccination rates increase, so we can find the communities who can benefit from public health efforts. We also hope that these public efforts extend beyond just COVID-19 assistance; our work has highlighted the connection between socioeconomic factors and infection and death rates. While we are unable to examine the causal nature of this relationship with this data set, hopefully future studies will probe at why this connection exists and present solutions.
+
+We note that COVID-19 is a pandemic, impacting the entire world. Though we only studied counties in the United States, it would be worthwhile to study other countries to understand how to prioritize not only vaccination efforts in the U.S. but in the world. Vaccination is a world-wide effort, and none of us are protected until we are all protected.
 

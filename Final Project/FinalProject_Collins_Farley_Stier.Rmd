@@ -32,6 +32,10 @@ library(heplots)
 library(ggplot2)
 library(cluster)
 library(fpc)
+library(vegan)
+library(mgcv)
+library(dplyr)
+library(magrittr)
 source("http://www.reuningscherer.net/multivariate/R/CSQPlot.r.txt")
 source("http://reuningscherer.net/multivariate/R/HClusEval3.R.txt")
 ```
@@ -41,7 +45,7 @@ source("http://reuningscherer.net/multivariate/R/HClusEval3.R.txt")
 
 With the nadir of the SARS-CoV-2 pandemic finally subsiding, the task of understanding the epidemiological factors contributing to the propagation of COVID-19 has only begun. Understanding relationships between COVID-19 spread prevention and socioeconomic variables will prove vital to inform us of how to mitigate the propagation of the next pandemic. This report aims to understand how the economic, education, behavioral, and population data for the 3141 U.S. counties relate to COVID-19 case data.
 
-We acknowledge that the impact of and response to COVID-19 has been very different from county to county. Looking at the [current COVID-19 vaccination data in mid-May 2020](https://www.nytimes.com/interactive/2020/us/covid-19-vaccine-doses.html), we note that the vaccination rate for ages 18+ ranges from 11% in some counties in Lousiana to 74% in some counties in New York.  Our guiding question is: Who is the most vulnerable to COVID-19 infection and death? This knowledge will guide public health efforts as we continue to fight against the spread of COVID-19. Knowledge of what socioeconomic factors put people at risk will allow us to prioritize our vaccination and education efforts from those who need it the most and will also let us take a step back to acknowledge the systemic health inequalities in our country.
+We acknowledge that the impact of and response to COVID-19 has been very different from county to county. Looking at the [current COVID-19 vaccination data in mid-May 2020](https://www.nytimes.com/interactive/2020/us/covid-19-vaccine-doses.html), we note that the vaccination rate for ages 18+ ranges from 11% in some counties in Louisiana to 74% in some counties in New York.  Our guiding question is: Who is the most vulnerable to COVID-19 infection and death? This knowledge will guide public health efforts as we continue to fight against the spread of COVID-19. Knowledge of what socioeconomic factors put people at risk will allow us to prioritize our vaccination and education efforts from those who need it the most and will also let us take a step back to acknowledge the systemic health inequalities in our country.
 
 
 # Design and Primary Questions
@@ -50,9 +54,9 @@ This report deploys three multivariate techniques to examine three questions in 
 
 1. How do the 3141 counties differ from one another, i.e., how do the socioeconomic and COVID-19 data relate to one another when distinguishing U.S. counties? Principal components analysis (PCA) will help to reduce the dimensionality of our large dataset, increasing interpretability of underlying trends between clusters of variables. This metric technique works on the "columns" of our data set to reduce them into composite variables and make them more interpretable.
 
-2. Which U.S. counties are similar to one another? Cluster analysis will enable the clustering of selected counties into a discrete number of groups based on similar socioeconomic and COVID-19 data. This metric technique works on the "rows" of our data set to find similar groups of observations.
+2. Which U.S. states are similar to one another? Cluster analysis will enable the clustering of states into a discrete number of groups based on similar socioeconomic and COVID-19 data. Aggregating by state will enable more effective visualizations. This metric technique works on the rows of our data set to find similar groups of observations aggregated by state.
 
-3. Which U.S. county variable pairings are similar to one another? Correspondence analysis is similar to PCA but applies to categorical rather than continoous variables. This nonmetric technique works on both the "columns" and "rows" of our data set to visualize which rows and column points are similar in lower-dimensional space.
+3. Which U.S. county variable pairings are similar to one another? Correspondence analysis is similar to PCA but applies to categorical rather than continuous variables. This nonmetric technique works on both the "columns" and "rows" of our data set to visualize which rows and column points are similar in lower-dimensional space.
 
 Using these techniques, we will be able to better understand our variables, our observations, and the interactions between our variables and observations. Who is most vulnerable to COVID-19 infection and death? This allows us to direct resources to protecting these vulnerable populations.
 
@@ -132,6 +136,7 @@ boxplot(raw[, c(7:15)])
 ```
 
 ```{r, results = "hide", fig.show = "hide"}
+library(car)
 for (i in 7:15){
  qqPlot(raw[, c(i)]) 
 }
@@ -156,8 +161,10 @@ raw_trans_log <- raw_trans[, c(1:6, 16:24)]
 
 ```{r}
 # Standardize variables since on different scales
+library(dplyr)
 scaled_dat_log <- raw_trans_log %>% mutate_at(c(7:15), ~(scale(.) %>% as.vector))
 ```
+
 ```{r, results = "hide", fig.show = "hide"}
 boxplot(scaled_dat_log[, c(7:15)])
 ```
@@ -206,7 +213,7 @@ for (i in 7:15){
 ```
 
 
-We made normal quantile plots for each of the 9 continuous variables in the dataset. This revealed that most variables initially did not have a univariate normal distribution. Taking the log-transform of the 10 continuous variables helped most variables have more linear quantile plots. Note that we also standardized the continuous variables since they were measured on different scales. Moreover, for death rate, percent COVID-19 cases, percent COVID-19 deaths, a 1.5 x IQR outlier exclusion method was applied to enable these variables to take on more normal univariate distributions. Note that the outlier exclusion method reduced the number of counties that we will analyze to 2,814 observation. Hence, this outlier exclusion method reduced the dataset by approximately 10%. This is somewhat high; however, we deemed that the benefits of having univariate and multivariate distributions to outweigh this disadvantage. We these changes made, the 9 continuous variables all had univariate normal distributions.
+We made normal quantile plots for each of the 9 continuous variables in the dataset. This revealed that most variables initially did not have a univariate normal distribution. Taking the log-transform of the 10 continuous variables helped most variables have more linear quantile plots. Note that we also standardized the continuous variables since they were measured on different scales. Moreover, for death rate, percent COVID-19 cases, percent COVID-19 deaths, a 1.5 x IQR outlier exclusion method was applied to enable these variables to take on more normal univariate distributions. Note that the outlier exclusion method reduced the number of counties that we will analyze to 2,814 observation. Hence, outlier exclusion reduced the dataset by approximately 10%. This percent excluded is relatively substantial; however, we deemed the benefits of having univariate distributions outweighed this disadvantage. With these changes made, the 9 continuous variables all had univariate normal distributions.
 
 ```{r}
 CSQPlot(scaled_dat_log_clean[, 7:15], label = "Counties")
@@ -215,6 +222,7 @@ CSQPlot(scaled_dat_log_clean[, 7:15], label = "Counties")
 A chi-square quantile plot (shown above) reflects that our data does not have a multivariate normal distribution. Thus, none of the techniques we use will require a multivariate normal distribution.
 
 ```{r}
+library(corrplot)
 corrplot.mixed(round(cor(scaled_dat_log_clean[7:15]), 2), lower.col = "black", upper = "ellipse", tl.col = "black", number.cex = .3, order = "hclust", tl.pos = "lt", tl.cex = .25)
 ```
 
@@ -228,14 +236,16 @@ summary(scaled_dat_log_clean[,6:15])
 boxplot(scaled_dat_log_clean[,7:15])
 ```
 
-We can see that there are data from 2814 of the 3006 counties in the US, with a fairly narrow distribution of the number of counties of each rural-urban type: 907 rural, 841 suburban, and 1066 urban. The distributions in the quantitative variables are pretty consistent, which we also saw in the box plot above, meaning that standardization might not make a huge difference. Let's go ahead and make a standardized version of the data set anyway, though.
+From the 2,814 US counties that we are analyzing, there is a fairly equitable distribution of rural-urban type: 907 rural, 841 suburban, and 1066 urban. The distributions in the quantitative variables are pretty consistent, as we expected considering our previous standardization operation of continuous variables. 
 
 ```{r}
 stlogdata <- scaled_dat_log_clean
-for(i in 7:15) {
-  stlogdata[,i] <- (stlogdata[,i] - mean(stlogdata[,i])) / sd(stlogdata[,i])
-}
-boxplot(stlogdata[,7:15])
+
+# this is redundant, as we have already standardized the data
+#for(i in 7:15) {
+#  stlogdata[,i] <- (stlogdata[,i] - mean(stlogdata[,i])) / sd(stlogdata[,i])
+#}
+#boxplot(stlogdata[,7:15])
 ```
 
 # Principle Components Analysis
@@ -291,6 +301,8 @@ plot(euclusters_ward,labels=as.vector(stlogdata[,"County_Name"]),cex=0.1,xlab=""
 The large spike in RMSSTD is very promising, and the dendrogram clustering looks apt as well, but we don't want to run the risk of having too many clusters!
 
 ```{r}
+library(cluster)
+
 cuts3 <- cutree(euclusters_ward, k=3)
 cuts9 <- cutree(euclusters_ward, k=9)
 cuts12 <- cutree(euclusters_ward, k=12)
@@ -320,13 +332,112 @@ Clusters 1 and 3 are relatively well-off economically. Both have high household 
 
 In contrast to Clusters 1 and 3, Cluster 2 is underprivileged, with low household income (-0.82), high poverty (0.85), low civilian labor force (-0.82), and a high percent with less than a high school degree (0.76). Cluster 2 is  hit the hardest by COVID-19, with the highest death rate (0.42). Here we most clearly see the connection between underlying economic factors and the impact of COVID-19.  Members of these communities tend to have jobs as essential workers that require work outside of the home. They may have to take public transit. They may be unable to afford grocery delivery services. Affluent communities have the resources to avoid COVID-19 transmission, while impoverished communities may not. These communities are likely to have preexisting conditions that worsen its effects and may lack quality healthcare or health insurance. We also note a potential gap in testing in these communities - death rates are high, but the reported infection rate is incredibly low (-0.01). As we continue to distribute COVID-19 vaccinations, special attention should be placed on supporting these communities most at risk for severe negative consequences associated with COVID-19.
 
-# Correspondence Analysis (todo)
+# Correspondence Analysis
+
+With correspondence analysis, we are seeking to answer the question: Which U.S. states are similar to one another? Correspondence analysis is similar to PCA but applies to categorical rather than continuous variables. In this part of the report, we analyze aggregate statistics by state, i.e., taking  means of continuous variables for all counties in each state. Organizing by the 50 states + D.C. will allow for more insightful visualizations.
+
+Of our original 9 continuous variables, we assign 5 continuous variables for correspondence analysis: Always_Wear_Mask_Survey, Median_Household_Income_2019, Percent_Poverty_2019, Percent_Adults_Less_Than_HS, and Covid_Confirmed_Cases_as_pct.
+
+For additional continuous variables, we make an environmental dataset. We look at four additional continuous variables describing each state: Unemployment_Rate_2019, Death_Rate_2019, Civilian_Labor_Force_2019_as_pct, and Covid_Deaths_as_pct. 
+
+```{r}
+stlm_CA_og <- scaled_dat_log[, c(1,3, 7:15)]
+
+# get averages of each variable by state
+stlm_CA_raw <- aggregate(Always_Wear_Mask_Survey_Log ~ State_Name, stlm_CA_og, mean)
+stlm_CA_raw$Unemployment_Rate_2019_Log <- aggregate(Unemployment_Rate_2019_Log ~ State_Name, stlm_CA_og, mean)$Unemployment_Rate_2019_Log
+stlm_CA_raw$Median_Household_Income_2019_Log <- aggregate(Median_Household_Income_2019_Log ~ State_Name, stlm_CA_og, mean)$Median_Household_Income_2019_Log
+stlm_CA_raw$Percent_Poverty_2019_Log <- aggregate(Percent_Poverty_2019_Log ~ State_Name, stlm_CA_og, mean)$Percent_Poverty_2019_Log
+stlm_CA_raw$Percent_Adults_Less_Than_HS_Log <- aggregate(Percent_Adults_Less_Than_HS_Log ~ State_Name, stlm_CA_og, mean)$Percent_Adults_Less_Than_HS_Log
+stlm_CA_raw$Death_Rate_2019_Log <- aggregate(Death_Rate_2019_Log ~ State_Name, stlm_CA_og, mean)$Death_Rate_2019_Log
+stlm_CA_raw$Civilian_Labor_Force_2019_as_pct_Log <- aggregate(Civilian_Labor_Force_2019_as_pct_Log ~ State_Name, stlm_CA_og, mean)$Civilian_Labor_Force_2019_as_pct_Log
+stlm_CA_raw$Covid_Confirmed_Cases_as_pct_Log <- aggregate(Covid_Confirmed_Cases_as_pct_Log ~ State_Name, stlm_CA_og, mean)$Covid_Confirmed_Cases_as_pct_Log
+stlm_CA_raw$Covid_Deaths_as_pct_Log <- aggregate(Covid_Deaths_as_pct_Log ~ State_Name, stlm_CA_og, mean)$Covid_Deaths_as_pct_Log
+```
+
+Because correspondence analysis requires continuous variables to take on positive values, we applied a +2.5 pseudoshift to all values. 
+
+```{r}
+stlm_CA_raw1 <- stlm_CA_raw
+rownames(stlm_CA_raw) <- stlm_CA_raw1[,1] 
+stlm_CA_raw <- stlm_CA_raw[,-1]
+
+stlm_CA_raw_pos <- stlm_CA_raw[, c(1:9)] + 2.5
+
+stlm_CA_raw_pos <- stlm_CA_raw_pos[-45, ]
+
+# Split up dataset into continuous variables and environmental variables
+stlm_CA_cont <- stlm_CA_raw_pos[,c(1,3,4,5,8)]
+stlm_CA_env <- stlm_CA_raw_pos[,c(2,6,7,9)]
+
+
+
+#Perform correspondence analysis
+stlm_CA <- cca(stlm_CA_cont)
+
+summary(stlm_CA)
+```
+
+Equal to squared eigenvalues, inertia is like variance and measures departures from the independence model. We see that the inertia value is 0.06632. The magnitude of inertia does not reflect more or less variance; it is reflective of the magnitude of the data.
+
+From the output data above in the "proportion explained” row, we can see that first direction explains ~62.9% of the relation. The “cumulative proportion” by the second direction is ~91.1%. Hence, the first two directions explain the vast majority of total inertia. The third and fourth directions have significantly smaller "proportion explained” values. This suggests that there are likely two major underlying discriminatory dimensions captured by the data of the 50 U.S. states (which reflect aggregate county data). To get a sense of these correspondence analysis directions, we subsequently plotted them.
+
+```{r, message=F, warning=F, results = "hide"}
+# we will hide these results
+# CA w/o env variables
+#plot results
+plot(stlm_CA, main = "Correspondence Analysis for U.S. States", type = "n")
+text(stlm_CA, dis = "wa", labels = rownames(stlm_CA_cont), cex = 0.3)
+points(stlm_CA, pch = 21, col = "red", bg = "red", cex = .5)
+text(stlm_CA, "species", col = "blue", cex = 0.5)
+```
+
+```{r}
+plot(stlm_CA, main = "Correspondence Analysis for U.S. States", type = "n")
+points(stlm_CA, pch = 19, col = "black", cex = .2)
+text(stlm_CA, "species", col = "blue", cex = 0.6)
+text(stlm_CA, dis = "wa", labels = rownames(stlm_CA_cont), cex = 0.3)
+#add environmental variables
+fit <- envfit(stlm_CA, stlm_CA_env, permutations = 1000)
+plot(fit, col = "red", lwd = 3, cex=0.8)
+```
+
+```{r}
+fit <- envfit(stlm_CA, stlm_CA_env, permutations = 1000)
+fit
+```
+
+We subsequently calculated p-values for the overlaid environmental variables, and found that the four overlaid environmental variables are all significant with p<0.05.
+
+Moreover, we applied non-metric multidimensional scaling (NMDS) to get a sense better sense of the distribution of U.S. states with respect to both the base and environmental continuous variables.
+
+```{r, warning=F, message=F, results="hide"}
+mds4 <- metaMDS(stlm_CA_env, distance="euclidean", k=4)
+```
+
+
+
+```{r, warning=F, message=F}
+fig <- ordiplot(mds4, type = "none", cex = 1.1, main = "NMDS for COVID-19 Data")
+#text(fig, "species", col = "red", cex = 0.5)
+text(fig, "sites", col = "black", cex = 0.3)
+plot(fit, cex=0.5)
+tmp1 <- with(stlm_CA_env, ordisurf(mds4, Unemployment_Rate_2019_Log, add = TRUE), cex=0.4)
+tmp2 <- with(stlm_CA_env, ordisurf(mds4, Death_Rate_2019_Log, add = TRUE, col = "green4"),cex=0.4)
+tmp3 <- with(stlm_CA_env, ordisurf(mds4, Civilian_Labor_Force_2019_as_pct_Log, add = TRUE, col = "purple"), cex=0.4)
+#tmp4 <- with(stlm_CA_env, ordisurf(mds4, Covid_Deaths_as_pct_Log, add = TRUE, col = "purple"))
+```
+
+From our first correspondence analysis plot including the first two correspondence analysis directions, we are able to deduce the similarities and differences between states with respect to the applied continuous variables. Overall, the counties seem evenly and scattered between the four quadrants. Generally, the higher values for the first correspondence axis is associated with higher civilian labor force participation, fewer COVID-19 cases/deaths, lower death rate, and lower unemployment. The second correspondence axis is associated primarily with poor masking behaviors, greater COVID-19 cases/deaths, and greater unemployment. These results perhaps indicate two different types of counties that are associated with high COVID-19 rates (those in poorer, disadvantaged areas and also those with poor masking behaviors). Interestingly, higher civilian labor force participation is associated with slightly higher COVID-19 deaths, a trend whose causes (e.g., more workplace exposure to COVID-19) necessitates further research. 
+
+The NMDS plot reveals even more insight. We believe this plot with its contour lines optimally illustrates the distribution of the counties and their relations to the NMDS axes and environmental variables. Moreover, we can see that the contour lines are not exactly perpendicular to their respective blue dimensional axes, suggesting a more complex (non-linear) significant pattern of counties according to the environmental variables of unemployment, bachelor’s percentage, and civilian labor force percentage. This graph moreover clearly illustrates how states form clusters according to these variables. There is a clear clustering of states with higher death rates, unemployment rates, and COVID-19 deaths. Other states exist along a spectrum of these variables. 
+
 
 # Conclusions and Discussion (add correspondence analysis)
 
-This report examined connections betweenthe economic, education, behavioral, and population data for the 3141 U.S. counties and COVID-19 infection and death rate data.
+This report examined connections between the economic, education, behavioral, and population data for the 3141 U.S. counties and COVID-19 infection and death rate data.
 
-Using PCA, we reduced the dimensionality of our large dataset to 3 principle components to explain 73% of the total variability. We highlight that there are two main factors that are associated with risk of COVID-19 infection and death: 1) masking behaviors and 2) socioeconomic status. Masking and wealth are associated with lower COVID-19 infection and death rates. Using cluster analysis, we determined which counties are most similar to each other: there are very well-off counties with high mask compliance and low COVID-19 rates, moderately well-off counties with low-mask compliance and high COVID-19 rates, and impoverished counties with high COVID-19 rates. This clustering implies that differences in masking behaviors and COVID-19 infection may not be due to any sort of moral gap but more likely due to a gap in resources - it is a privilege to be able to stay informed on scientific discoveries, purchase masks, work from home, and maintain social distancing. We also note the that impoverished counties have much higher COVID-19 death rates and may have preexisting conditions that worsen its effects and lack quality healthcare or health insurance.
+Using PCA, we reduced the dimensionality of our large dataset to 3 principle components to explain 73% of the total variability. We highlight that there are two main factors that are associated with risk of COVID-19 infection and death: 1) masking behaviors and 2) socioeconomic status. Masking and wealth are associated with lower COVID-19 infection and death rates. Using cluster analysis, we determined which counties are most similar to each other: there are very well-off counties with high mask compliance and low COVID-19 rates, moderately well-off counties with low-mask compliance and high COVID-19 rates, and impoverished counties with high COVID-19 rates. This clustering implies that differences in masking behaviors and COVID-19 infection may not be due to any sort of moral gap but more likely due to a gap in resources - it is a privilege to be able to stay informed on scientific discoveries, purchase masks, work from home, and maintain social distancing. We also note the that impoverished counties have much higher COVID-19 death rates and may have preexisting conditions that worsen its effects and lack quality healthcare or health insurance. Moreover, correspondence analysis for states revealed similar trends: higher COVID-19 infection and death is associated with less proclivity to mask, higher unemployment, and overall higher death rate. 
 
 We can observe these connections, but we cannot make any cause-and-effect statements based on our current observational study. However, even without knowing the cause, we can say that vaccine and education efforts should be prioritized in underprivileged communities with lower masking rates - these communities are being hit the hardest by COVID-19.
 

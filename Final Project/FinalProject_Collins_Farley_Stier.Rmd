@@ -407,7 +407,7 @@ stlm_CA <- cca(stlm_CA_cont)
 summary(stlm_CA)
 ```
 
-Equal to squared eigenvalues, inertia is like variance and measures departures from the independence model. We see that the inertia value is 0.06632. The magnitude of inertia does not reflect more or less variance; it is reflective of the magnitude of the data.
+Discussion of inertia: Equal to squared eigenvalues, inertia is like variance and measures departures from the independence model. We see that the inertia value is 0.06632. The magnitude of inertia does not reflect more or less variance; it is reflective of the magnitude of the data.
 
 Deciding how many directions to keep: From the output data above in the "proportion explained” row, we can see that first direction explains ~62.9% of the relation. The “cumulative proportion” by the second direction is ~91.1%. Hence, the first two directions explain the vast majority of total inertia. The third and fourth directions have significantly smaller "proportion explained” values. This suggests that there are likely two major underlying discriminatory dimensions captured by the data of the 50 U.S. states (which reflect aggregate county data). To get a sense of these correspondence analysis directions, we subsequently plotted them.
 

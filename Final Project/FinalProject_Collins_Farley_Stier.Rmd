@@ -337,7 +337,7 @@ Our next goal is to determine how many clusters would be appropriate with our Eu
 hclus_eval(stlogdata[,7:15], dist_m = 'euclidean', clus_m = 'ward.D', plot_op = T, print_num = 15)
 ```
 
-There are peaks in the RMSSTD at 3, 9, and most notably 12,indicating that these may be reasonable group counts. SPRSQ tapers at 9, supporting the idea that there may be 9 groups. However, the tapering is far more prominent at 2 and 4 and is echoed in the RSQ, so a lower group count may be indicated. Below, we examine the fits for 3, 9, and 12 clusters using dendograms and cluster plots in both principle component space. 
+We ran the hclust_eval function provided by JDRS to determine how many clusters to consider. While the function runs locally, it does not knit; the relevant graphs are available on request. In those graphs: There are peaks in the RMSSTD at 3, 9, and most notably 12,indicating that these may be reasonable group counts. SPRSQ tapers at 9, supporting the idea that there may be 9 groups. However, the tapering is far more prominent at 2 and 4 and is echoed in the RSQ, so a lower group count may be indicated. Below, we examine the fits for 3, 9, and 12 clusters using dendograms and cluster plots in both principle component space. 
 
 ```{r}
 plot(euclusters_ward,labels=as.vector(stlogdata[,"County_Name"]),cex=0.1,xlab="",ylab="Distance",lwd=0.2, main="Euclidean Distance & Ward Clustering"); rect.hclust(euclusters_ward, k = 3)

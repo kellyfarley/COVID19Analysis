@@ -3,12 +3,12 @@ title: "S&DS 563/S&DS 363 Final Project"
 author:
 date: "15 May 2021"
 output:
+  pdf_document:
+    latex_engine : xelatex
   html_document:
    toc: yes
    toc_float:
      collapsed: no
-  pdf_document:
-    latex_engine : xelatex
 ---
 
 ```{r include = FALSE}
@@ -255,7 +255,7 @@ stlogdata <- scaled_dat_log_clean
 
 # Principle Component Analysis
 
-We use PCA to reduce the dimensionality of our dataset to find composite variables that are linear combinations of our metric variables.
+We use PCA to reduce the dimensionality of our dataset to find composite variables that are linear combinations of our metric variables. Note that the multivariate normality and variable correlations were already assessed in the "Descriptive Plot and Summary Statistics" section and determined to be suitable for PCA, though parallel analysis may not be used due to the lack of multivariate normality.
 
 ```{r}
 stlm <- stlogdata[,7:15]
@@ -270,6 +270,13 @@ screeplot(pc1,type="lines",col="red",lwd=2,pch=19,cex=1.2,main="Scree Plot of Tr
 ```
 
 Deciding how many PC's to keep: According to the total variance explained method, using a cutoff of 1, the first 3 PC's should be used. According to the Eigenvalue > 1 method, the first 3 PC's should be used. According to the scree plot elbow method, the first 1 PC's should be used. We choose to maintain the first 3 PC's in accordance with the first two methods for a parsimonous but still informative model.
+
+```{r}
+source("http://reuningscherer.net/multivariate/r/ciscoreplot.R.txt")
+ciscoreplot(pc1, c(1,2), stlogdata[,2])
+```
+
+There are no noticeable trends or outliers on the score plot, which is good.
 
 ```{r}
 print(summary(pc1), digits = 2, loadings=pc1$loadings, cutoff=0)
@@ -287,11 +294,35 @@ Using PCA, we can reduce 9 metric variables to 3 composite variables that are re
 
 We use cluster analysis to find groups of counties that are similar to each other but different from other counties across our metric variables.  We are finding clusters of *observations*, unlike in PCA where we found clusters of *variables.*
 
+Our first task is to determine a distance and agglomeration method; we compare Euclidean versus Chebychev for distance and Ward versus complete for agglomeration. We choose a k value of 4 as has been indicated by our past pset work but will further explore cluster sizes after determining our preferred methods.
+
 ```{r}
+# euclidean
 euclid <- dist(stlogdata[,7:15], method="euclidean")
-euclusters_ward <- hclust(euclid, method="ward.D")
-# plot(euclusters_ward,labels=as.vector(stlogdata[,"County_Name"]),cex=0.1,xlab="",ylab="Distance",lwd=0.2, main="Euclidean Distance & Ward Clustering")
+euclusters_ward <- hclust(euclid, method="ward.D") # euclidean/ward
+euclusters_complete <- hclust(euclid, method="complete") # euclidean/complete
+
+# chebychev
+cheby <- dist(stlogdata[,7:15], method="minkowski", p=20)
+chebsters_ward <- hclust(cheby, method="ward.D") # cheby/ward
+chebsters_complete <- hclust(cheby, method="complete") # cheby/complete
 ```
+
+```{r}
+plot(euclusters_ward,labels=as.vector(stlogdata[,"County_Name"]),cex=0.1,xlab="",ylab="Distance",lwd=0.2, main="Euclidean/Ward"); rect.hclust(euclusters_ward, k = 4)
+
+plot(euclusters_complete,labels=as.vector(stlogdata[,"County_Name"]),cex=0.1,xlab="",ylab="Distance",lwd=0.2, main="Euclidean/Complete"); rect.hclust(euclusters_complete, k = 4)
+
+plot(chebsters_ward,labels=as.vector(stlogdata[,"County_Name"]),cex=0.1,xlab="",ylab="Distance",lwd=0.2, main="Chebychev/Ward"); rect.hclust(chebsters_ward, k = 4)
+
+plot(chebsters_complete,labels=as.vector(stlogdata[,"County_Name"]),cex=0.1,xlab="",ylab="Distance",lwd=0.2, main="Chebychev/Complete"); rect.hclust(chebsters_complete, k = 4)
+```
+
+Explanation of agglomeration method: It’s clear that the Ward’s method gives much neater groupings than the complete linkage method. That is, the complete linkage clusters become very granular at much higher distances. It looks like Ward’s might be the way to go, at least for these data.
+
+Explanation of distance method: The distance methods are both Minowskis with very different exponents: Euclidean and a Chebychev approximation. It seems that Euclidean/Ward gives the cleanest, most sensible clusters, so we choose this combination moving forward.
+
+Our next goal is to determine how many clusters would be appropriate with our Euclidean/Ward technique.
 
 ```{r eval=F}
 hclus_eval(stlogdata[,7:15], dist_m = 'euclidean', clus_m = 'ward.D', plot_op = T, print_num = 15)
@@ -305,9 +336,7 @@ plot(euclusters_ward,labels=as.vector(stlogdata[,"County_Name"]),cex=0.1,xlab=""
 plot(euclusters_ward,labels=as.vector(stlogdata[,"County_Name"]),cex=0.1,xlab="",ylab="Distance",lwd=0.2, main="Euclidean Distance & Ward Clustering"); rect.hclust(euclusters_ward, k = 9)
 
 plot(euclusters_ward,labels=as.vector(stlogdata[,"County_Name"]),cex=0.1,xlab="",ylab="Distance",lwd=0.2, main="Euclidean Distance & Ward Clustering"); rect.hclust(euclusters_ward, k = 12)
-```
 
-```{r}
 library(cluster)
 
 cuts3 <- cutree(euclusters_ward, k=3)

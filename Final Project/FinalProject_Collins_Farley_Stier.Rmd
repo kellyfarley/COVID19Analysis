@@ -3,12 +3,12 @@ title: "S&DS 563/S&DS 363 Final Project"
 author:
 date: "15 May 2021"
 output:
-  pdf_document:
-    latex_engine : xelatex
   html_document:
    toc: yes
    toc_float:
      collapsed: no
+  pdf_document:
+    latex_engine : xelatex
 ---
 
 ```{r include = FALSE}
@@ -54,9 +54,9 @@ This report deploys three multivariate techniques to examine the following quest
 
 1. How do the 3141 counties differ from one another, i.e., how do the socioeconomic and COVID-19 data relate to one another when distinguishing U.S. counties? Principal component analysis (PCA) will help to reduce the dimensionality of our large dataset, increasing interpretability of underlying trends between clusters of variables. This metric technique works on the columns of our dataset to reduce them into composite variables and make them more interpretable.
 
-2. Which U.S. states are similar to one another? Cluster analysis will enable the clustering of states into a discrete number of groups based on similar socioeconomic and COVID-19 data. This metric technique works on the rows of our dataset to find similar groups of observations.
+2. Which U.S. counties are similar to one another? Cluster analysis will enable the clustering of counties into a discrete number of groups based on similar socioeconomic and COVID-19 data. This metric technique works on the rows of our dataset to find similar groups of observations.
 
-3. Which U.S. county variable pairings are similar to one another? Correspondence analysis is similar to PCA but applies to categorical rather than continuous variables. This nonmetric technique works on both the columnns and rows of our dataset to visualize which rows and column points are similar in lower-dimensional space.
+3. Which U.S. states are similar to one another? Ordination techniques on aggregate state data are deployed to understand how the states differ from one another with respect to these socioeconomic and COVID-19 variables. This technique works on both the columns and rows of our dataset to visualize which rows and column points are similar in lower-dimensional space.
 
 Using these techniques, we will be able to better understand our variables, our observations, and the interactions between our variables and observations. Who is most vulnerable to COVID-19 infection and death? This allows us to direct resources to protecting these vulnerable populations.
 
@@ -220,7 +220,7 @@ We made normal quantile plots for each of the 9 continuous variables in the data
 CSQPlot(scaled_dat_log_clean[, 7:15], label = "Counties")
 ```
 
-A chi-square quantile plot (shown above) reflects that our data does not have a multivariate normal distribution. Thus, none of the techniques we use will require a multivariate normal distribution.
+A chi-square quantile plot (shown above) reflects that our data does not have a multivariate normal distribution. Thus, we will ensure to deploy techniques that do not assume multivariate normality.
 
 *Variable Correlation*
 
@@ -310,11 +310,20 @@ chebsters_complete <- hclust(cheby, method="complete") # cheby/complete
 
 ```{r}
 plot(euclusters_ward,labels=as.vector(stlogdata[,"County_Name"]),cex=0.1,xlab="",ylab="Distance",lwd=0.2, main="Euclidean/Ward"); rect.hclust(euclusters_ward, k = 4)
+```
 
+
+```{r}
 plot(euclusters_complete,labels=as.vector(stlogdata[,"County_Name"]),cex=0.1,xlab="",ylab="Distance",lwd=0.2, main="Euclidean/Complete"); rect.hclust(euclusters_complete, k = 4)
+```
 
+
+```{r}
 plot(chebsters_ward,labels=as.vector(stlogdata[,"County_Name"]),cex=0.1,xlab="",ylab="Distance",lwd=0.2, main="Chebychev/Ward"); rect.hclust(chebsters_ward, k = 4)
+```
 
+
+```{r}
 plot(chebsters_complete,labels=as.vector(stlogdata[,"County_Name"]),cex=0.1,xlab="",ylab="Distance",lwd=0.2, main="Chebychev/Complete"); rect.hclust(chebsters_complete, k = 4)
 ```
 
@@ -332,11 +341,20 @@ There are peaks in the RMSSTD at 3, 9, and most notably 12,indicating that these
 
 ```{r}
 plot(euclusters_ward,labels=as.vector(stlogdata[,"County_Name"]),cex=0.1,xlab="",ylab="Distance",lwd=0.2, main="Euclidean Distance & Ward Clustering"); rect.hclust(euclusters_ward, k = 3)
+```
 
+
+```{r}
 plot(euclusters_ward,labels=as.vector(stlogdata[,"County_Name"]),cex=0.1,xlab="",ylab="Distance",lwd=0.2, main="Euclidean Distance & Ward Clustering"); rect.hclust(euclusters_ward, k = 9)
+```
 
+
+```{r}
 plot(euclusters_ward,labels=as.vector(stlogdata[,"County_Name"]),cex=0.1,xlab="",ylab="Distance",lwd=0.2, main="Euclidean Distance & Ward Clustering"); rect.hclust(euclusters_ward, k = 12)
+```
 
+
+```{r}
 library(cluster)
 
 cuts3 <- cutree(euclusters_ward, k=3)
@@ -344,13 +362,19 @@ cuts9 <- cutree(euclusters_ward, k=9)
 cuts12 <- cutree(euclusters_ward, k=12)
 
 clusplot(stlogdata[,7:15], cuts3, color = TRUE, shade = TRUE, labels = 0, lines = 0, main = "County Cluster Plot, Ward's Method, First two PC, 3 groups", cex = .1)
+```
 
+
+```{r}
 clusplot(stlogdata[,7:15], cuts9, color = TRUE, shade = TRUE, labels = 0, lines = 0, main = "County Cluster Plot, Ward's Method, First two PC, 9 groups", cex = .1)
+```
 
+
+```{r}
 clusplot(stlogdata[,7:15], cuts12, color = TRUE, shade = TRUE, labels = 0, lines = 0, main = "County Cluster Plot, Ward's Method, First two PC, 12 groups", cex = .1)
 ```
 
-The large spike in RMSSTD is very promising for the largest cluster size of 12, and the dendrogram clustering looks apt as well, but we don't want to run the risk of having too many clusters! For the most parsimonous model, we examine 3 clusters that primarily differ on their wealth/education/employment and COVID-19 infection and death rates.
+The large spike in RMSSTD is very promising for the largest cluster size of 12, and the dendrogram clustering looks apt as well, but we don't want to run the risk of having too many clusters. For the most parsimonous model, we examine 3 clusters that primarily differ on their wealth/education/employment and COVID-19 infection and death rates.
 
 ```{r}
 fit <- kmeans(stlm, 3)
@@ -361,9 +385,9 @@ Clusters 1 and 3 are relatively well-off economically. Both have high household 
 
 In contrast to Clusters 1 and 3, Cluster 2 is underprivileged, with low household income (-0.82), high poverty (0.85), low civilian labor force (-0.82), and a high percent with less than a high school degree (0.76). Cluster 2 is  hit the hardest by COVID-19, with the highest death rate (0.42). Here we most clearly see the connection between underlying economic factors and the impact of COVID-19.  Members of these communities may have jobs as essential workers that require work outside of the home. They may have to take public transit. They may be unable to afford grocery delivery services. Affluent communities have the resources to avoid COVID-19 transmission, while impoverished communities may not. These communities are likely to have preexisting conditions that worsen the effects of COVID-19 and may lack quality healthcare or health insurance. We also note a potential gap in testing in these communities - death rates are high, but the reported infection rate is low (-0.01). As we continue to distribute COVID-19 vaccinations, special attention should be placed on supporting these communities most at risk for severe negative consequences associated with COVID-19.
 
-# Correspondence Analysis
+# Ordination
 
-With correspondence analysis, we are seeking to answer the question: Which U.S. states are similar to one another? Correspondence analysis is similar to PCA but applies to categorical rather than continuous variables. In this part of the report, we analyze aggregate statistics by state, i.e., taking  means of continuous variables for all counties in each state. Organizing by the 50 states + D.C. will allow for more insightful visualizations.
+With ordination, we are seeking to answer the question: Which U.S. states are similar to one another? Our ordination strategies deployed (i.e., CA, DCA, NMDS) are similar to PCA, but analyze *relative* values. PCA decomposes relations between columns only, whereas correspondence analysis decomposes rows as well. Moreover, with our ordination techniques, we are seeking to explore the distribution of *states* with respect to these pertinent socioeconomic and COVID-19 variables. In this part of the report, we analyze aggregate statistics by state, i.e., taking  means of continuous variables for all counties in each state. Organizing by the 50 states + D.C. will allow for more insightful visualizations to bolster our analysis.
 
 Of our original 9 continuous variables, we assign 5 continuous variables for correspondence analysis: Always_Wear_Mask_Survey, Median_Household_Income_2019, Percent_Poverty_2019, Percent_Adults_Less_Than_HS, and Covid_Confirmed_Cases_as_pct.
 
@@ -384,14 +408,14 @@ stlm_CA_raw$Covid_Confirmed_Cases_as_pct_Log <- aggregate(Covid_Confirmed_Cases_
 stlm_CA_raw$Covid_Deaths_as_pct_Log <- aggregate(Covid_Deaths_as_pct_Log ~ State_Name, stlm_CA_og, mean)$Covid_Deaths_as_pct_Log
 ```
 
-Because correspondence analysis requires continuous variables to take on positive values, we applied a +2.5 pseudoshift to all values. 
+We first applied correspondence analysis. Because correspondence analysis (CA) requires continuous variables to take on positive values, we applied a +2.5 pseudoshift to all values. 
 
 ```{r}
 stlm_CA_raw1 <- stlm_CA_raw
 rownames(stlm_CA_raw) <- stlm_CA_raw1[,1] 
 stlm_CA_raw <- stlm_CA_raw[,-1]
 
-stlm_CA_raw_pos <- stlm_CA_raw[, c(1:9)] + 2.5
+stlm_CA_raw_pos <- stlm_CA_raw[, c(1:9)] + 2.7
 
 stlm_CA_raw_pos <- stlm_CA_raw_pos[-45, ]
 
@@ -407,18 +431,18 @@ stlm_CA <- cca(stlm_CA_cont)
 summary(stlm_CA)
 ```
 
-Discussion of inertia: Equal to squared eigenvalues, inertia is like variance and measures departures from the independence model. We see that the inertia value is 0.06632. The magnitude of inertia does not reflect more or less variance; it is reflective of the magnitude of the data.
+Discussion of inertia: Equal to squared eigenvalues, inertia is like variance and measures departures from the independence model. We see that the inertia value is 0.05682. The magnitude of inertia does not reflect more or less variance; it is reflective of the magnitude of the data, which in our case is limited by the data being shifted log values.
 
-Deciding how many directions to keep: From the output data above in the "proportion explained” row, we can see that first direction explains ~62.9% of the relation. The “cumulative proportion” by the second direction is ~91.1%. Hence, the first two directions explain the vast majority of total inertia. The third and fourth directions have significantly smaller "proportion explained” values. This suggests that there are likely two major underlying discriminatory dimensions captured by the data of the 50 U.S. states (which reflect aggregate county data). To get a sense of these correspondence analysis directions, we subsequently plotted them.
+Deciding how many directions to keep: From the output data above in the "proportion explained” row, we can see that first CA direction explains ~63.0% of the relation. The “cumulative proportion” by the second CA direction is ~91.2%. Hence, the first two CA directions explain the vast majority of total inertia. The third and fourth directions have significantly smaller "proportion explained” values. This suggests that there are likely two major underlying discriminatory dimensions captured by the data of the 50 U.S. states (which reflect aggregate county data). To get a sense of these two CA directions, we subsequently plotted them overlaid with the aforementioned environmental variables.
 
 ```{r, message=F, warning=F, results = "hide"}
 # we will hide these results
 # CA w/o env variables
 #plot results
-plot(stlm_CA, main = "Correspondence Analysis for U.S. States", type = "n")
-text(stlm_CA, dis = "wa", labels = rownames(stlm_CA_cont), cex = 0.3)
-points(stlm_CA, pch = 21, col = "red", bg = "red", cex = .5)
-text(stlm_CA, "species", col = "blue", cex = 0.5)
+#plot(stlm_CA, main = "Correspondence Analysis for U.S. States", type = "n")
+#text(stlm_CA, dis = "wa", labels = rownames(stlm_CA_cont), cex = 0.3)
+#points(stlm_CA, pch = 21, col = "red", bg = "red", cex = .5)
+#text(stlm_CA, "species", col = "blue", cex = 0.5)
 ```
 
 ```{r}
@@ -431,44 +455,118 @@ fit <- envfit(stlm_CA, stlm_CA_env, permutations = 1000)
 plot(fit, col = "red", lwd = 3, cex=0.8)
 ```
 
+We subsequently calculated p-values for the overlaid environmental variables, and found that the four overlaid environmental variables are all significant with p<0.05.
+
 ```{r}
 fit <- envfit(stlm_CA, stlm_CA_env, permutations = 1000)
 fit
 ```
 
-We subsequently calculated p-values for the overlaid environmental variables, and found that the four overlaid environmental variables are all significant with p<0.05.
 
-Moreover, we applied non-metric multidimensional scaling (NMDS) to get a sense better sense of the distribution of U.S. states with respect to both the base and environmental continuous variables.
+From our first correspondence analysis plot including the first two CA directions, we are able to deduce the similarities and differences between states with respect to the applied continuous variables. Overall, the counties seem evenly and scattered between the four quadrants. Generally, higher values along the first CA direction are associated with higher civilian labor force participation, fewer COVID-19 cases/deaths, lower death rate, and lower unemployment. Higher values along the second CA direction are associated primarily with poor masking behaviors, greater COVID-19 cases/deaths, and greater unemployment. These results perhaps indicate two different types of counties that are associated with high COVID-19 rates (those in poorer, disadvantaged areas and also those with poor masking behaviors). This first CA direction explained the majority of the relation and is thus most pertinent. Interestingly, for the second CA direction higher civilian labor force participation is associated with slightly higher COVID-19 deaths. Although this could perhaps point to more workplace exposure to COVID-19, we see that the inverse relationship for civilian labor force + COVID-19 cases is conveyed from the first, and more significant, CA direction. Thus, it is likely they are negatively correlated.
+
+
+```{r}
+pc1 <- princomp(stlm_CA_env, cor=TRUE)
+
+source("http://reuningscherer.net/multivariate/r/ciscoreplot.R.txt")
+ciscoreplot(pc1,c(1,2),stlm_CA_env[,1])
+```
+
+From the above, we can see that there is no evidence of data snaking in higher dimensional space. Evidence of snaking would be a PCA score plot that looks like a horseshoe. However, the above scoreplot appears random and therefore does not indicate data snaking.
+
+
+For another visualization of patterns such that the continuous variables shown in blue could be less clustered, we ran detrended correspondence analysis (DCA).
+
+```{r}
+#detrended correspondence analysis
+stlm_dca <- decorana(stlm_CA_cont)
+plot(stlm_dca, main = "DCA for U.S. States", type = "n")
+text(stlm_dca, display = c("sites"), labels = rownames(stlm_CA_cont), cex = 0.86)
+points(stlm_dca, pch = 21, col = "red", bg = "yellow", cex = 0.6)
+text(stlm_dca, "species", col = "blue", cex = 0.6)
+
+#add environmental variables
+fit <- envfit(stlm_dca, stlm_CA_env, permutations = 1000)
+plot(fit, col = "red", lwd = 3)
+```
+
+The above detrended correspondence analysis (DCA) plot allows us to better understand the relations between the applied and environmental variables. Higher scores along the first DCA direction are associated with greater proclivity to mask, higher civilian labor force participation, lower poverty, lower unemployment, and lower COVID-19 cases/deaths. This data is sensible and aligns with our previous conclusions about corresponding variables. It is not surprising to observe similar relationships at the state level. Higher scores along the second DCA direction reveal similar relationships: higher COVID-19 cases/deaths, less proclivity to mask, lower unemployment. Interestingly, once again, we see that the second direction indicates higher civilian labor force participation is associated with higher COVID-19 deaths and cases. However, we see that the inverse relationship for these variables is conveyed from the first, and more significant, DCA direction.  
+
+Moreover, we applied multidimensional scaling (MDS). 
 
 ```{r, warning=F, message=F, results="hide"}
-mds4 <- metaMDS(stlm_CA_env, distance="euclidean", k=4)
+results <- matrix(NA, 21, 5)
+#j is number of dimensions to try
+for (j in 1:5){
+  for (i in 1:20){
+    temp <- stlm_CA_cont[shuffle(nrow(stlm_CA_cont)), 1]
+    for (k in 2:12) { temp <- cbind(temp, stlm_CA_cont[shuffle(nrow(stlm_CA_cont)), k]) }
+    #store stress
+    results[i, j] <- metaMDS(temp, k = j, distance = "euclidean")$stress
+  }
+  results[21, j] <- metaMDS(stlm_CA_cont, k = j, distance = "euclidean")$stress
+}
+```
+
+We made a scree plot of stress of each dimensional solution.
+
+```{r}
+#plot stress results
+
+plot(c(1:5), results[21, ], type = "b", col = "blue", lwd = 3, 
+     ylim = c(0, max(results)), xlab = "Dimensions", ylab = "Stress", pch = 19, 
+     main = "MDS for Rural-Urban Data, Euclidean Distance")
+mins <- apply(results[1:20, ], 2, min)
+maxs <- apply(results[1:20, ], 2, max)
+meds <- apply(results[1:20, ], 2, median)
+
+for (i in 1:5){
+  points(rep(i, 3), c(mins[i], meds[i], maxs[i]), type = "b", col = "red", lwd = 3, pch = 19)
+}
+legend(3.5, (.9*max(results)), c("MDS Solution", "20 Permutations"), lwd = 3, col = c("blue", "red"))
+```
+
+After performing multidimensional scaling for 1-5 dimensions, the above scree plot for stress illustrates an elbow at 2 dimensions. This stress level is below 10% and indicates a good fit. For 3 dimensions, the stress is below 5% and indicates an excellent fit. After 4 dimensions, random chance could result in comparable stress values.
+
+Stress is a measure of the difference between actual pairwise distances and calculated reference distances; a lower stress indicates a better fit. As the dimensions exceeds that of the data (for 5 dimensions), the stress goes to 0.
+
+```{r, results="hide"}
+stlm_CA_cont.mds2 <- metaMDS(stlm_CA_cont, k = 2, distance = "euclidean")
 ```
 
 
+```{r}
+fig <- ordiplot(stlm_CA_cont.mds2, type = "none", cex = 0.7, main="NMDS for U.S. States")
+text(fig, "species", col = "red", cex = 0.7)
+text(fig, "sites", col = "blue", cex = 0.4)
 
-```{r, warning=F, message=F}
-fig <- ordiplot(mds4, type = "none", cex = 1.1, main = "NMDS for COVID-19 Data")
-#text(fig, "species", col = "red", cex = 0.5)
-text(fig, "sites", col = "black", cex = 0.3)
-plot(fit, cex=0.5)
-tmp1 <- with(stlm_CA_env, ordisurf(mds4, Unemployment_Rate_2019_Log, add = TRUE), cex=0.4)
-tmp2 <- with(stlm_CA_env, ordisurf(mds4, Death_Rate_2019_Log, add = TRUE, col = "green4"),cex=0.4)
-tmp3 <- with(stlm_CA_env, ordisurf(mds4, Civilian_Labor_Force_2019_as_pct_Log, add = TRUE, col = "purple"), cex=0.4)
-#tmp4 <- with(stlm_CA_env, ordisurf(mds4, Covid_Deaths_as_pct_Log, add = TRUE, col = "purple"))
+fit <- envfit(stlm_CA_cont.mds2, stlm_CA_env, permutations = 1000, cex = 0.7)
+plot(fit, col = "black", lwd = 3, cex=0.7)
 ```
 
-From our first correspondence analysis plot including the first two correspondence analysis directions, we are able to deduce the similarities and differences between states with respect to the applied continuous variables. Overall, the counties seem evenly and scattered between the four quadrants. Generally, the higher values for the first correspondence axis is associated with higher civilian labor force participation, fewer COVID-19 cases/deaths, lower death rate, and lower unemployment. The second correspondence axis is associated primarily with poor masking behaviors, greater COVID-19 cases/deaths, and greater unemployment. These results perhaps indicate two different types of counties that are associated with high COVID-19 rates (those in poorer, disadvantaged areas and also those with poor masking behaviors). Interestingly, higher civilian labor force participation is associated with slightly higher COVID-19 deaths, a trend whose causes (e.g., more workplace exposure to COVID-19) necessitates further research. 
+Our above NMDS plot with overlaid environmental variables indicate similar relationships (particularly along the more significant first direction): states with higher COVID-19 cases/deaths are associated with lower median household income, greater proclivity to mask, greater poverty, greater overall death rate, and greater percent of adults with less than high school education.
 
-The NMDS plot reveals even more insight. We believe this plot with its contour lines optimally illustrates the distribution of the counties and their relations to the NMDS axes and environmental variables. Moreover, we can see that the contour lines are not exactly perpendicular to their respective blue dimensional axes, suggesting a more complex (non-linear) significant pattern of counties according to the environmental variables of unemployment, bachelor’s percentage, and civilian labor force percentage. This graph moreover clearly illustrates how states form clusters according to these variables. There is a clear clustering of states with higher death rates, unemployment rates, and COVID-19 deaths. Other states exist along a spectrum of these variables. 
+We subsequently explored canonical correspondence analysis to, once again, to get a sense of the distribution of U.S. states with respect to both the base and environmental continuous variables.
+
+```{r}
+stlm_cca2 <- cca(stlm_CA_cont, stlm_CA_env, scale="FALSE")
+plot(stlm_cca2, main="CCA for U.S. States")
+```
+
+Although more compact in presentation, canonical correspondence analysis (CCA) similarly demonstrates how states with higher COVID-19 cases/deaths are associated with greater unemployment and greater overall death rate.
+
+Among our ordination results, NMDS seems to provide the most insight. The axes are scaled in such a way that the data clearly illustrates patterns among the states with respect to the base and environmental variables. We see that higher COVID-19 cases/deaths is associated with lower median household income, greater proclivity to mask, greater poverty, greater overall death rate, and greater percent of adults with less than high school education. These trends at the state-level largely reflect what we observed at the county-level.
 
 
 # Conclusions and Discussion
 
 This report examined connections between the economic, education, behavioral, and population data for the 3141 U.S. counties and COVID-19 infection and death rate data.
 
-Using PCA, we reduced the dimensionality of our large dataset to 3 principle components to explain 73% of the total variability. We highlight that there are two main factors that are associated with risk of COVID-19 infection and death: 1) masking behaviors and 2) socioeconomic status. Masking and wealth are associated with lower COVID-19 infection and death rates. Using cluster analysis, we determined which counties are most similar to each other: there are very well-off counties with high mask compliance and low COVID-19 rates, moderately well-off counties with low-mask compliance and high COVID-19 rates, and impoverished counties with high COVID-19 rates. This clustering implies that differences in masking behaviors and COVID-19 infection may not be due to any sort of moral gap but more likely due to a gap in resources - it is a privilege to be able to stay informed on scientific discoveries, purchase masks, work from home, and maintain social distancing. We also note the that impoverished counties have much higher COVID-19 death rates and may have preexisting conditions that worsen its effects and lack quality healthcare or health insurance. Moreover, correspondence analysis for states revealed similar trends: higher COVID-19 infection and death is associated with less proclivity to mask, higher unemployment, and overall higher death rate. 
+Using PCA, we reduced the dimensionality of our large dataset to 3 principle components to explain 73% of the total variability. We highlight that there are two main factors that are associated with risk of COVID-19 infection and death: 1) masking behaviors and 2) socioeconomic status. Masking and wealth are associated with lower COVID-19 infection and death rates. Using cluster analysis, we determined which counties are most similar to each other: there are very well-off counties with high mask compliance and low COVID-19 rates, moderately well-off counties with low-mask compliance and high COVID-19 rates, and impoverished counties with high COVID-19 rates. This clustering implies that differences in masking behaviors and COVID-19 infection may not be due to any sort of moral gap but more likely due to a gap in resources - it is a privilege to be able to stay informed on scientific discoveries, purchase masks, work from home, and maintain social distancing. We also note the that impoverished counties have much higher COVID-19 death rates and may have preexisting conditions that worsen its effects and lack quality healthcare or health insurance. Moreover, our ordination techniques for states revealed similar trends: higher COVID-19 infection and death is associated with lower median household income, greater proclivity to mask, greater poverty, greater overall death rate, and greater percent of adults with less than high school education.
 
-We can observe these connections, but we cannot make any cause-and-effect statements based on our current observational study. However, even without knowing the cause, we can say that vaccine and education efforts should be prioritized in underprivileged communities with lower masking rates - these communities are being hit the hardest by COVID-19.
+We can observe these connections, but we cannot make any cause-and-effect statements based on our current observational study. However, even without knowing the cause, we can say that vaccine and education efforts should be prioritized in underprivileged communities with lower masking rates - these communities are being hit the hardest by COVID-19. Moreover, we see that communities with pre-existing disadvantages prior to the pandemic (e.g., higher unemployment, higher overall death rate, less educated population) are being disproportionately affected by the virus. 
+
 
 # Points for Further Analysis
 
